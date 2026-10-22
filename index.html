@@ -1,0 +1,2648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>银行定期存款认购预测 · 数据挖掘实践报告</title>
+<meta name="description" content="Kaggle Playground S5E8 银行电话营销数据挖掘实践：数据探查、特征处理、4 个模型对比、网格搜索调参、全量 5 折交叉验证与提交。">
+<meta name="theme-color" content="#0a1c33">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f2a4d'/%3E%3Crect x='7' y='17' width='4' height='9' rx='1' fill='%238eaadb'/%3E%3Crect x='14' y='12' width='4' height='14' rx='1' fill='%234c72b0'/%3E%3Crect x='21' y='7' width='4' height='19' rx='1' fill='%23f0a13a'/%3E%3C/svg%3E">
+<style>
+/* ==========================================================================
+   S5E8 Bank Marketing — report page
+   ========================================================================== */
+:root{
+  --bg:#f6f8fc;
+  --panel:#ffffff;
+  --ink:#0b1b2e;
+  --ink-2:#1d3350;
+  --muted:#5d6f86;
+  --muted-2:#8496ab;
+  --line:#e3eaf3;
+  --line-2:#eef3f9;
+  --navy:#0a1c33;
+  --navy-2:#102a4b;
+  --brand:#2e5a9c;
+  --brand-2:#4c72b0;
+  --brand-3:#8eaadb;
+  --brand-4:#dbe6f6;
+  --accent:#d97706;
+  --accent-2:#f0a13a;
+  --good:#0f7a63;
+  --bad:#b4462f;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif;
+  --mono:"Cascadia Code",Consolas,"SFMono-Regular",Menlo,monospace;
+  --shadow-sm:0 1px 2px rgba(16,24,40,.04);
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 16px 34px -28px rgba(16,24,40,.28);
+  --shadow-lg:0 24px 60px -30px rgba(10,28,51,.35);
+  --radius:16px;
+  --nav-h:64px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.72 var(--sans);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  font-feature-settings:"tnum" 1,"kern" 1;
+}
+h1,h2,h3,h4,h5{margin:0;line-height:1.25;font-weight:700;letter-spacing:-.015em;color:var(--ink)}
+p{margin:0}
+a{color:inherit;text-decoration:none}
+img,svg{max-width:100%}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand-2);outline-offset:3px;border-radius:4px}
+::selection{background:#cfe0f7;color:#0a1c33}
+.container{width:min(1180px,100% - 48px);margin-inline:auto}
+@media (max-width:640px){.container{width:min(1180px,100% - 32px)}}
+.mono{font-family:var(--mono)}
+.nowrap{white-space:nowrap}
+
+/* ---------- nav ---------- */
+.nav{position:sticky;top:0;z-index:60;background:rgba(246,248,252,.86);backdrop-filter:blur(14px) saturate(160%);border-bottom:1px solid var(--line)}
+.nav-inner{display:flex;align-items:center;gap:20px;height:var(--nav-h)}
+.brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.brand-mark{width:30px;height:30px;border-radius:9px;background:linear-gradient(145deg,#2e5a9c,#0f2a4d);display:grid;place-items:center;box-shadow:0 4px 10px -4px rgba(15,42,77,.6)}
+.brand-mark svg{width:16px;height:16px}
+.brand-text{display:flex;flex-direction:column;line-height:1.15}
+.brand-text b{font-size:14px;letter-spacing:-.01em}
+.brand-text span{font-size:10.5px;color:var(--muted-2);font-family:var(--mono);letter-spacing:.06em}
+.nav-links{display:flex;align-items:center;gap:1px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
+.nav-links::-webkit-scrollbar{display:none}
+.nav-link{padding:7px 11px;border-radius:8px;color:var(--muted);font-size:13.5px;font-weight:500;white-space:nowrap;transition:color .18s,background .18s}
+.nav-link:hover{color:var(--ink);background:#eef3fa}
+.nav-link.active{color:var(--brand);background:#e7effb;font-weight:600}
+.nav-score{display:inline-flex;align-items:center;gap:8px;flex-shrink:0;padding:6px 12px;border-radius:999px;background:#0f2a4d;color:#e6eefb;font-size:12px;letter-spacing:.01em;box-shadow:0 6px 16px -10px rgba(15,42,77,.9)}
+.nav-score b{font-family:var(--mono);font-size:12.5px;color:#ffd79a;letter-spacing:.02em}
+.progress{position:fixed;top:0;left:0;height:2px;width:0;background:linear-gradient(90deg,#4c72b0,#8eaadb,#f0a13a);z-index:70;transition:width .1s linear}
+@media (max-width:1080px){.nav-score{display:none}}
+@media (max-width:860px){
+  :root{--nav-h:58px}
+  .brand-text span{display:none}
+  .nav-inner{gap:10px}
+  .nav-links{margin-left:0;flex:1;mask-image:linear-gradient(90deg,#000 90%,transparent);-webkit-mask-image:linear-gradient(90deg,#000 90%,transparent)}
+  .nav-link{font-size:12.5px;padding:6px 9px}
+}
+@media (max-width:560px){
+  .brand-text{display:none}
+  .brand-mark{width:28px;height:28px}
+}
+
+/* ---------- hero ---------- */
+.hero{position:relative;overflow:hidden;background:radial-gradient(1200px 620px at 12% -10%,#173763 0%,#0b2140 45%,#081a30 100%);color:#e8effa}
+.hero::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.055) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(700px 520px at 22% 12%,#000 10%,transparent 78%);
+  -webkit-mask-image:radial-gradient(700px 520px at 22% 12%,#000 10%,transparent 78%);
+}
+.hero::after{
+  content:"";position:absolute;width:620px;height:620px;right:-220px;top:-260px;border-radius:50%;
+  background:radial-gradient(circle,rgba(110,160,235,.28),rgba(110,160,235,0) 65%);filter:blur(6px);pointer-events:none;
+}
+.hero-inner{position:relative;z-index:1;display:grid;grid-template-columns:1.2fr .8fr;gap:56px;padding:78px 0 84px;align-items:center}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;padding:6px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.045);color:#a9c0df;font-size:12px;letter-spacing:.06em}
+.eyebrow .pulse{width:6px;height:6px;border-radius:50%;background:#7fd1b0;box-shadow:0 0 0 4px rgba(127,209,176,.14)}
+.hero h1{font-size:clamp(32px,4vw,52px);line-height:1.14;letter-spacing:-.03em;margin:22px 0 0;color:#f4f8ff;font-weight:750;text-wrap:balance}
+.hero h1 .grad{background:linear-gradient(96deg,#b9d0f2 0%,#f3f8ff 42%,#ffcf95 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-lead{margin-top:20px;max-width:56ch;color:#b6c7dd;font-size:16.5px;line-height:1.8}
+.hero-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.chip{padding:5px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.045);color:#c4d4e9;font-size:12px;letter-spacing:.01em}
+.hero-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:11px 19px;border-radius:11px;font-size:14px;font-weight:600;border:1px solid transparent;cursor:pointer;transition:transform .18s,background .18s,border-color .18s,box-shadow .18s}
+.btn svg{width:15px;height:15px}
+.btn-primary{background:#e9f0fb;color:#0f2a4d;box-shadow:0 10px 24px -16px rgba(0,0,0,.8)}
+.btn-primary:hover{background:#fff;transform:translateY(-1px)}
+.btn-ghost{border-color:rgba(255,255,255,.22);color:#dbe6f5;background:transparent}
+.btn-ghost:hover{background:rgba(255,255,255,.07);transform:translateY(-1px)}
+.hero-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:38px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1);border-radius:14px;overflow:hidden}
+.metric{background:#0c2341;padding:15px 16px}
+.metric b{display:block;font-size:24px;line-height:1.2;font-family:var(--mono);font-weight:600;color:#f2f7ff;letter-spacing:-.02em}
+.metric span{display:block;margin-top:4px;font-size:11.5px;color:#8ea6c6;letter-spacing:.01em}
+.hero-card{align-self:center;display:flex;flex-direction:column;gap:16px;padding:26px;border-radius:20px;border:1px solid rgba(255,255,255,.15);background:linear-gradient(165deg,rgba(255,255,255,.1),rgba(255,255,255,.025));box-shadow:0 30px 70px -30px rgba(0,0,0,.65);backdrop-filter:blur(6px)}
+.hero-card .label{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:#9db4d3}
+.hero-card .label .tag{text-transform:none;letter-spacing:0;padding:3px 8px;border-radius:6px;background:rgba(127,209,176,.14);color:#8fe0c0;font-size:10.5px;font-family:var(--mono)}
+.score{display:flex;align-items:flex-end;gap:10px}
+.score b{font:600 54px/1 var(--mono);letter-spacing:-.045em;background:linear-gradient(100deg,#d7e6ff,#ffd9a3);-webkit-background-clip:text;background-clip:text;color:transparent}
+.score span{font-size:12px;color:#93aac9;padding-bottom:8px;line-height:1.4}
+.spark{display:flex;align-items:flex-end;gap:7px;height:66px;padding-top:6px;border-bottom:1px solid rgba(255,255,255,.12)}
+.spark i{flex:1;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#9fbde8,#4c72b0);transform-origin:bottom;transform:scaleY(.02);transition:transform .9s cubic-bezier(.22,.8,.3,1)}
+.spark i.on{transform:scaleY(1)}
+.spark-cap{display:flex;justify-content:space-between;font-size:10.5px;color:#8ea6c6;font-family:var(--mono);margin-top:6px}
+.hero-card .rows{display:grid;gap:9px;margin-top:2px}
+.hrow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;font-size:12.5px;color:#c3d3e8}
+.hrow .mini{grid-column:1 / -1;height:5px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:-3px}
+.hrow .mini i{display:block;height:100%;border-radius:999px;width:0;transition:width 1s cubic-bezier(.22,.8,.3,1)}
+.hrow .mini i.warm{background:linear-gradient(90deg,#f0a13a,#ffd79a)}
+.hrow .mini i.cool{background:linear-gradient(90deg,#4c72b0,#9fbde8)}
+.hrow b{font-family:var(--mono);font-weight:600;color:#ffe3b8}
+.hero-card .foot{border-top:1px solid rgba(255,255,255,.12);padding-top:13px;font-size:11.5px;color:#8ea6c6;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.hero-card .foot b{color:#d9e6f7;font-weight:600}
+@media (max-width:980px){
+  .hero-inner{grid-template-columns:1fr;gap:34px;padding:56px 0 60px}
+  .hero-card{max-width:520px}
+  .hero h1{font-size:clamp(30px,6vw,44px)}
+}
+@media (max-width:560px){
+  .hero-metrics{grid-template-columns:1fr 1fr}
+  .score b{font-size:44px}
+}
+
+/* ---------- section shell ---------- */
+.band{padding:82px 0;scroll-margin-top:calc(var(--nav-h) + 12px)}
+.band--alt{background:#fff;border-block:1px solid var(--line)}
+.band--tight{padding:64px 0}
+.sec-head{margin-bottom:34px}
+.sec-kicker{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--brand-2)}
+.sec-kicker::before{content:"";width:26px;height:1px;background:var(--brand-3)}
+.sec-title{margin-top:12px;font-size:clamp(25px,3vw,36px);max-width:42ch;text-wrap:balance}
+.sec-lead{margin-top:12px;color:var(--muted);font-size:15.5px;max-width:80ch;line-height:1.8}
+.sec-lead b{color:var(--ink-2);font-weight:600}
+
+/* ---------- layout helpers ---------- */
+.grid{display:grid;gap:20px}
+.grid>*{min-width:0}
+.kpi-strip>*,.pipe>*,.split>div,.thr-out>*,.hist-stats>*,.result-banner>*,.delta>*,.footer .fgrid>*{min-width:0}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g-5-7{grid-template-columns:5fr 7fr}
+.g-7-5{grid-template-columns:7fr 5fr}
+.mt-8{margin-top:8px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}.mt-20{margin-top:20px}
+.mt-24{margin-top:24px}.mt-28{margin-top:28px}.mt-32{margin-top:32px}.mt-40{margin-top:40px}
+.stack{display:flex;flex-direction:column;gap:14px}
+.center{display:flex;align-items:center;gap:10px}
+.between{display:flex;align-items:center;justify-content:space-between;gap:12px}
+@media (max-width:980px){.g3,.g4,.g-5-7,.g-7-5{grid-template-columns:1fr}}
+@media (max-width:760px){.g2{grid-template-columns:1fr}}
+
+/* ---------- cards ---------- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow-sm);min-width:0}
+.card--pad-sm{padding:18px 20px}
+.card--flat{box-shadow:none}
+.card--tint{background:linear-gradient(180deg,#fbfcff,#f5f9ff);border-color:#e3ecf8}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.card-title{font-size:15px;font-weight:650;color:var(--ink-2);letter-spacing:-.005em}
+.card-sub{font-size:12.5px;color:var(--muted-2);margin-top:2px}
+.card-note{font-size:12.5px;color:var(--muted);line-height:1.7}
+.card:hover{box-shadow:var(--shadow)}
+
+/* stat cards */
+.stat{display:flex;flex-direction:column;gap:5px;padding:20px}
+.stat b{font:600 28px/1.15 var(--mono);letter-spacing:-.03em;color:var(--ink)}
+.stat span{font-size:12px;color:var(--muted)}
+.stat small{font-size:11.5px;color:var(--muted-2);font-family:var(--mono)}
+
+/* 3-step strip */
+.steps3{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.steps3>div{background:#fff;padding:14px 16px}
+.steps3 .step-k{font-family:var(--mono);font-size:11px;color:var(--muted-2)}
+.steps3 .step-v{font-size:13px;color:var(--ink-2);margin-top:3px}
+@media (max-width:560px){
+  .steps3{grid-template-columns:1fr}
+  .steps3>div{display:flex;gap:12px;align-items:baseline;padding:11px 14px}
+  .steps3 .step-k{flex:none;width:48px}
+  .steps3 .step-v{margin-top:0}
+}
+
+/* badges & dots */
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:7px;font-size:11.5px;font-weight:600;letter-spacing:.01em;background:#eef3fa;color:var(--brand);border:1px solid #e0e9f5;white-space:nowrap}
+.badge--warm{background:#fdf3e3;color:#a35c05;border-color:#f7e3c3}
+.badge--good{background:#e9f6f1;color:#0f7a63;border-color:#d2ece3}
+.badge--bad{background:#fbeeea;color:#a63c26;border-color:#f3dcd5}
+.badge--mono{font-family:var(--mono);letter-spacing:0}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot--valid{background:#3f68a5}
+.dot--train{background:#b9cbe6}
+.dot--warm{background:var(--accent-2)}
+.dot--good{background:var(--good)}
+
+/* callouts */
+.callout{display:flex;gap:14px;padding:18px 20px;border-radius:14px;border:1px solid var(--line);background:#fbfcff}
+.callout .ic{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex-shrink:0;background:#e9f0fb;color:var(--brand)}
+.callout .ic svg{width:16px;height:16px}
+.callout h4{font-size:14px;margin-bottom:5px;color:var(--ink-2)}
+.callout p{font-size:13.5px;color:var(--muted);line-height:1.75}
+.callout--warm{background:#fffbf3;border-color:#f6e3c4}
+.callout--warm .ic{background:#fdf0d9;color:#a35c05}
+.callout--good{background:#f4fbf8;border-color:#d5ece4}
+.callout--good .ic{background:#e3f5ee;color:#0f7a63}
+
+/* ---------- tables ---------- */
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:#fff;max-width:100%}
+table.tb{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px}
+table.tb th{position:sticky;top:0;text-align:left;font-size:11.5px;font-weight:600;letter-spacing:.05em;color:var(--muted-2);padding:11px 16px;background:#f8fafd;border-bottom:1px solid var(--line);white-space:nowrap}
+table.tb td{padding:11px 16px;border-bottom:1px solid var(--line-2);color:var(--ink-2)}
+table.tb tr:last-child td{border-bottom:0}
+table.tb tbody tr:hover td{background:#fbfcff}
+table.tb .num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+table.tb tr.is-best td{background:#f5faf7}
+table.tb tr.is-best td:first-child{box-shadow:inset 3px 0 0 #2f9e7d}
+table.tb .strong{font-weight:650;color:var(--ink)}
+table.tb .muted{color:var(--muted-2)}
+.tb-scroll-hint{display:none;font-size:11.5px;color:var(--muted-2);margin-top:8px}
+
+/* ---------- code ---------- */
+.code-group{display:grid;gap:16px;margin-top:22px}
+.code{position:relative;border-radius:14px;overflow:hidden;background:#0b1a2c;border:1px solid #17293f;box-shadow:0 18px 40px -30px rgba(8,20,36,.9)}
+.code-head{display:flex;align-items:center;gap:9px;padding:10px 15px;background:#0a1524;border-bottom:1px solid #17293f;font-family:var(--mono);font-size:11.5px;color:#8ba3c0}
+.code-head .dots{display:flex;gap:5px;margin-right:3px}
+.code-head .dots i{width:8px;height:8px;border-radius:50%;background:#263c56}
+.code-head .dots i:nth-child(1){background:#3c5a7c}
+.code-head .fname{color:#a9c0dc}
+.code-head .lang{margin-left:auto;color:#67809d;letter-spacing:.06em;text-transform:uppercase;font-size:10.5px}
+.code-copy{margin-left:8px;padding:3px 8px;border-radius:6px;border:1px solid #24384f;background:transparent;color:#8ba3c0;font-size:10.5px;cursor:pointer;font-family:var(--mono)}
+.code-copy:hover{background:#16273b;color:#d6e4f4}
+.code pre{margin:0;padding:17px 19px;overflow-x:auto;font-family:var(--mono);font-size:12.6px;line-height:1.78;color:#c8d7e9;tab-size:4}
+.code pre code{font-family:inherit;font-size:inherit;white-space:pre}
+.tok-k{color:#7fb3ff}
+.tok-s{color:#9fe0a9}
+.tok-n{color:#f3b96b}
+.tok-c{color:#5d7794;font-style:italic}
+.tok-f{color:#d8c4ff}
+.tok-b{color:#8fd6e8}
+.code-src{display:none}
+
+/* ---------- charts ---------- */
+.chart-card{padding:22px 22px 16px}
+.chart-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:6px;flex-wrap:wrap}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:11.5px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.chart-wrap{position:relative;width:100%;max-width:100%}
+svg.chart{display:block;width:100%;height:auto;overflow:visible}
+svg.chart text{font-family:var(--sans);font-size:11.5px;fill:var(--muted)}
+svg.chart .val{fill:#1c3556;font-weight:600;font-size:11px;font-family:var(--mono)}
+svg.chart .val-sm{font-size:10px;font-family:var(--mono);fill:#4a6488}
+svg.chart .grid-line{stroke:#e9eff7;stroke-width:1}
+svg.chart .base-line{stroke:#c9d8e8;stroke-width:1}
+svg.chart .axis-tick{stroke:#d9e4f1;stroke-width:1}
+svg.chart .axis-text{fill:#8496ab;font-size:11px}
+svg.chart .cat{fill:#5d6f86;font-size:12px}
+svg.chart .cat-strong{fill:#1d3350;font-size:12px;font-weight:600}
+svg.chart .bar-train{fill:#b9cbe6}
+svg.chart .bar-valid{fill:#3f68a5}
+svg.chart .bar-a{fill:#8eaadb}
+svg.chart .bar-b{fill:#2e5a9c}
+svg.chart .bar-warm{fill:#f0a13a}
+svg.chart .bar-muted{fill:#dbe5f2}
+svg.chart .mean-line{stroke:#d97706;stroke-width:1.4;stroke-dasharray:5 4}
+svg.chart .band{fill:#f0a13a;opacity:.1}
+svg.chart .grow{transform-box:fill-box;transform-origin:bottom;transform:scaleY(.02);transition:transform .8s cubic-bezier(.22,.8,.3,1)}
+svg.chart .grow.on{transform:scaleY(1)}
+svg.chart .growx{transform-box:fill-box;transform-origin:left;transform:scaleX(.02);transition:transform .8s cubic-bezier(.22,.8,.3,1)}
+svg.chart .growx.on{transform:scaleX(1)}
+svg.chart .fade{opacity:0;transition:opacity .7s ease}
+svg.chart .fade.on{opacity:1}
+svg.chart .hit{fill:transparent;cursor:pointer}
+svg.chart .hit:hover{fill:rgba(76,114,176,.06)}
+svg.chart .line-main{fill:none;stroke:#2e5a9c;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+svg.chart .pt{fill:#fff;stroke:#2e5a9c;stroke-width:2.2}
+svg.chart .note-line{stroke:#c9d8e8;stroke-width:1;stroke-dasharray:3 3}
+svg.chart .note-text{fill:#a35c05;font-size:10.5px;font-family:var(--mono)}
+
+.tooltip{position:fixed;z-index:90;pointer-events:none;max-width:250px;padding:9px 11px;border-radius:9px;background:#0b1a2c;color:#e4edf9;font-size:12px;line-height:1.55;box-shadow:0 14px 30px -12px rgba(0,0,0,.5);opacity:0;transform:translateY(5px);transition:opacity .14s,transform .14s}
+.tooltip.on{opacity:1;transform:none}
+.tooltip b{color:#ffd79a;font-family:var(--mono);font-weight:600}
+.tooltip .t-row{display:flex;justify-content:space-between;gap:14px}
+.tooltip .t-head{font-weight:600;margin-bottom:3px;color:#fff}
+
+/* ---------- data section ---------- */
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media (max-width:900px){.kpi-strip{grid-template-columns:1fr 1fr}}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow-sm)}
+.kpi b{display:block;font:600 24px/1.2 var(--mono);letter-spacing:-.03em;color:var(--ink);white-space:nowrap}
+.kpi span{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+.kpi small{display:block;font-size:11px;color:var(--muted-2);font-family:var(--mono);margin-top:6px}
+@media (max-width:480px){.kpi b{font-size:19px}.kpi{padding:15px 16px}}
+
+.donut-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.donut{width:176px;height:176px;flex-shrink:0}
+.donut text{font-family:var(--sans)}
+.donut .big{font:600 25px/1 var(--mono);fill:#122c4b;letter-spacing:-.04em}
+.donut .small{font-size:10.5px;fill:#8496ab;letter-spacing:.04em}
+.donut-legend{display:grid;gap:10px;font-size:12.5px;color:var(--muted)}
+.donut-legend b{font-family:var(--mono);color:var(--ink);font-weight:600}
+.donut-legend .row{display:flex;align-items:center;gap:8px}
+
+/* category explorer */
+.cat-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}
+.cat-tab{padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--muted);font-size:12.5px;cursor:pointer;transition:.16s}
+.cat-tab:hover{border-color:#c6d6ea;color:var(--ink-2)}
+.cat-tab.on{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 6px 14px -10px rgba(46,90,156,.9)}
+.cat-list{display:grid;gap:2px}
+.cat-row{display:grid;grid-template-columns:104px minmax(0,1fr) 78px;gap:12px;align-items:center;padding:6px 4px;border-radius:8px}
+.cat-row:hover{background:#f8fbff}
+.cat-name{font-size:12.5px;color:var(--ink-2);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:3px 0}
+.cat-count{display:block;font-family:var(--mono);font-size:10px;color:var(--muted-2);line-height:1.35}
+.cat-track{position:relative;height:20px;background:#f0f5fb;border-radius:5px;overflow:hidden}
+.cat-fill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,#8eaadb,#4c72b0);border-radius:5px;transition:width .55s cubic-bezier(.22,.8,.3,1)}
+.cat-fill.warm{background:linear-gradient(90deg,#f3c07a,#e08a1e)}
+.cat-base{position:absolute;top:-2px;bottom:-2px;width:2px;background:#d97706;opacity:.65;z-index:2}
+.cat-val{text-align:right;font-family:var(--mono);font-size:12.5px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.cat-count{font-family:var(--mono);font-size:11px;color:var(--muted-2)}
+.cat-insight{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted);line-height:1.75;min-height:48px}
+.cat-insight b{color:var(--ink-2)}
+.cat-scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--muted-2);margin:2px 90px 8px 116px}
+
+/* field dictionary */
+details.dict{border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden}
+details.dict>summary{display:flex;align-items:center;gap:10px;padding:15px 20px;cursor:pointer;font-size:14px;font-weight:600;list-style:none;color:var(--ink-2)}
+details.dict>summary::-webkit-details-marker{display:none}
+details.dict>summary::after{content:"";width:7px;height:7px;border-right:1.5px solid var(--muted-2);border-bottom:1.5px solid var(--muted-2);transform:rotate(45deg);margin-left:auto;transition:transform .2s}
+details.dict[open]>summary::after{transform:rotate(-135deg)}
+details.dict>summary .badge{margin-left:2px}
+details.dict .dict-body{padding:0 20px 18px;border-top:1px solid var(--line-2)}
+
+/* ---------- feature cards ---------- */
+.feat-card{position:relative;display:flex;flex-direction:column;gap:12px;padding:22px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+.feat-card .fnum{position:absolute;top:18px;right:20px;font-family:var(--mono);font-size:11px;color:#c3d2e4}
+.feat-map{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12.5px;flex-wrap:wrap}
+.feat-map .from{padding:3px 7px;border-radius:5px;background:#f1f5fa;color:#4a6488}
+.feat-map .to{padding:3px 7px;border-radius:5px;background:#e8f0fb;color:var(--brand);font-weight:600}
+.feat-map .ar{color:#a9bbd0}
+.feat-card h4{font-size:15.5px;letter-spacing:-.01em}
+.feat-card p{font-size:13px;color:var(--muted);line-height:1.75}
+.feat-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
+.mini-viz{background:#f8fbff;border:1px solid var(--line-2);border-radius:10px;padding:10px 10px 6px}
+.mini-viz .cap{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted-2);font-family:var(--mono);margin-bottom:2px}
+.mini-bars{display:flex;align-items:flex-end;gap:2px;height:42px}
+.mini-bars i{flex:1;background:#9db9dd;border-radius:2px 2px 0 0;min-height:1px;transition:height .6s cubic-bezier(.22,.8,.3,1)}
+.mini-bars.log i{background:#e2a860}
+@media (max-width:760px){
+  .chart-wrap{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+  .chart-wrap svg.chart{min-width:600px}
+  .thr-scale span:nth-child(2),.thr-scale span:nth-child(4){display:none}
+}
+.scroll-hint{display:none;margin-top:8px;text-align:center;font-family:var(--mono);font-size:10.5px;color:var(--muted-2);letter-spacing:.02em}
+@media (max-width:760px){.scroll-hint{display:block}}
+
+/* ---------- pipeline ---------- */
+.pipe{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+.step{position:relative;display:flex;flex-direction:column;gap:8px;padding:18px 16px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-sm);transition:transform .2s,border-color .2s,box-shadow .2s;min-height:150px}
+.step:hover{transform:translateY(-3px);border-color:#c3d5ec;box-shadow:var(--shadow)}
+.step .n{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--brand-2);letter-spacing:.08em}
+.step h5{font-size:14.5px;letter-spacing:-.01em}
+.step p{font-size:12px;color:var(--muted);line-height:1.65}
+.step .t{margin-top:auto;font-family:var(--mono);font-size:10.5px;color:var(--muted-2);display:flex;justify-content:space-between;align-items:center;gap:6px}
+.step .t .go{color:var(--brand-2);opacity:0;transition:.2s}
+.step:hover .t .go{opacity:1}
+.step::after{content:"";position:absolute;right:-10px;top:50%;width:6px;height:6px;border-top:1.5px solid #c9d8e8;border-right:1.5px solid #c9d8e8;transform:translateY(-50%) rotate(45deg)}
+.step:last-child::after{display:none}
+@media (max-width:1080px){.pipe{grid-template-columns:repeat(3,1fr)}.step::after{display:none}}
+@media (max-width:700px){.pipe{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){.pipe{grid-template-columns:1fr}}
+
+.flow-note{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:18px;font-size:12px;color:var(--muted);align-items:center}
+.flow-note .k{font-family:var(--mono);font-size:11.5px;color:var(--muted-2)}
+
+/* ---------- split viz ---------- */
+.split{display:flex;height:64px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.split>div{display:flex;flex-direction:column;justify-content:center;padding:0 14px;font-size:11.5px;line-height:1.5;transition:flex .4s}
+.split .s-train{flex:150;background:linear-gradient(90deg,#2e5a9c,#4c72b0);color:#fff}
+.split .s-valid{flex:50;background:#9db9dd;color:#0f2a4d}
+.split .s-rest{flex:550;background:#eef3fa;color:#8496ab;border-left:1px solid #fff}
+.split b{font-family:var(--mono);font-size:12.5px;display:block}
+.split span{opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.split-key{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;font-size:12px;color:var(--muted)}
+.split-key span{display:inline-flex;align-items:center;gap:7px}
+.split-key i{width:12px;height:12px;border-radius:4px;display:inline-block}
+@media (max-width:700px){.split .s-rest{flex:120}.split>div{padding:0 9px;font-size:10.5px}}
+@media (max-width:560px){
+  .split .s-rest{display:none}
+  .split .s-valid{flex:50}
+  .split>div{padding:0 12px}
+}
+
+/* ---------- delta callout ---------- */
+.delta{display:grid;grid-template-columns:1fr auto 1fr;gap:26px;align-items:center;padding:26px 30px;border-radius:18px;background:linear-gradient(100deg,#0f2a4d,#1d3f6b);color:#e8f0fb;box-shadow:var(--shadow-lg)}
+.dcell{display:flex;flex-direction:column;gap:3px}
+.dcell .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:#9db4d3}
+.dcell b{font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1.15}
+.dcell small{font-size:11px;color:#8ea6c6}
+.dcell.right{text-align:right;align-items:flex-end}
+.dbridge{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:180px}
+.dbridge .k{font-size:11.5px;color:#b9cbe2}
+.dbridge b{font-family:var(--mono);font-size:21px;color:#ffd79a;letter-spacing:-.01em}
+.dbridge .line{width:100%;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.08),#f0a13a,rgba(255,255,255,.08));position:relative}
+.dbridge .line::after{content:"";position:absolute;right:0;top:-3px;width:7px;height:7px;border-top:1px solid #f0a13a;border-right:1px solid #f0a13a;transform:rotate(45deg)}
+.dfoot{grid-column:1 / -1;margin-top:12px;padding-top:13px;border-top:1px solid rgba(255,255,255,.12);text-align:center;font-size:12.5px;color:#b9cbe2}
+.dfoot b{color:#ffd79a;font-family:var(--mono);font-size:13.5px;font-weight:600}
+@media (max-width:720px){
+  .delta{grid-template-columns:1fr;gap:14px}
+  .dcell.right{text-align:left;align-items:flex-start}
+  .dbridge{align-items:flex-start;min-width:0}
+  .dbridge .line{width:100%}
+}
+
+/* ---------- comparison bars (accuracy paradox) ---------- */
+.paradox{display:grid;gap:16px}
+.px-row{display:grid;gap:6px}
+.px-top{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--muted);gap:10px}
+.px-top b{font-family:var(--mono);color:var(--ink-2);font-size:13px}
+.px-track{position:relative;height:26px;border-radius:7px;background:#f0f5fb;overflow:hidden}
+.px-fill{position:absolute;inset:0 auto 0 0;width:0;border-radius:7px;transition:width 1s cubic-bezier(.22,.8,.3,1)}
+.px-fill.acc{background:repeating-linear-gradient(135deg,#c9d8ea,#c9d8ea 7px,#dbe6f4 7px,#dbe6f4 14px)}
+.px-fill.auc{background:linear-gradient(90deg,#2e5a9c,#6f9bd4)}
+.px-fill.dud{background:#e3e9f1}
+.px-note{font-size:11.5px;color:var(--muted-2)}
+
+/* ---------- metrics big number row ---------- */
+.result-banner{display:grid;grid-template-columns:1.1fr .9fr;gap:0;border-radius:18px;overflow:hidden;border:1px solid #14324f;box-shadow:var(--shadow-lg)}
+.result-banner .left{padding:30px 32px;background:linear-gradient(150deg,#0d2542,#16395f);color:#eaf2fc;display:flex;flex-direction:column;gap:8px}
+.result-banner .left .k{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:#9db4d3}
+.result-banner .left .big{font-family:var(--mono);font-size:54px;line-height:1;letter-spacing:-.05em;color:#ffd79a;font-weight:600}
+.result-banner .left .sub{font-size:13px;color:#b9cbe2}
+.result-banner .right{padding:26px 30px;background:#0a1a2e;display:grid;grid-template-columns:1fr 1fr;gap:18px;align-content:center}
+.result-banner .right div b{display:block;font-family:var(--mono);font-size:19px;color:#e8f0fb;letter-spacing:-.02em}
+.result-banner .right div span{font-size:11.5px;color:#8ea6c6}
+@media (max-width:820px){.result-banner{grid-template-columns:1fr}.result-banner .left .big{font-size:44px}}
+
+/* ---------- histogram / threshold ---------- */
+.hist-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.hist-stats div{padding:10px 12px;border-radius:10px;background:#f8fbff;border:1px solid var(--line-2)}
+.hist-stats b{display:block;font-family:var(--mono);font-size:13.5px;color:var(--ink-2)}
+.hist-stats span{font-size:10.5px;color:var(--muted-2)}
+.threshold-panel{display:grid;gap:18px}
+.thr-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.thr-value{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--brand);letter-spacing:-.03em}
+.thr-slider{display:grid;gap:8px}
+.thr-scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--muted-2)}
+.thr-out{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.thr-out div{padding:14px;border-radius:12px;border:1px solid var(--line-2);background:#fbfdff}
+.thr-out b{display:block;font-family:var(--mono);font-size:20px;color:var(--ink);letter-spacing:-.03em;line-height:1.2}
+.thr-out span{font-size:11px;color:var(--muted-2);display:block;margin-top:3px}
+.thr-out .hot b{color:var(--accent)}
+.thr-table td,.thr-table th{padding:8px 10px;font-size:12px}
+@media (max-width:760px){.thr-out{grid-template-columns:1fr 1fr}.hist-stats{grid-template-columns:1fr 1fr}}
+
+/* ---------- qa ---------- */
+.qa-list{display:grid;gap:10px}
+details.qa{border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;transition:border-color .2s,box-shadow .2s}
+details.qa:hover{border-color:#cddbed}
+details.qa[open]{border-color:#c3d5ec;box-shadow:var(--shadow-sm)}
+details.qa summary{display:flex;gap:12px;align-items:flex-start;padding:15px 18px;cursor:pointer;list-style:none;font-size:14px;font-weight:600;color:var(--ink-2);line-height:1.55}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary .q{font-family:var(--mono);font-size:11.5px;color:var(--brand-2);padding-top:2px;flex-shrink:0;letter-spacing:.02em}
+details.qa summary::after{content:"+";margin-left:auto;color:var(--brand-3);font-size:18px;line-height:1;font-weight:400;transition:transform .2s;flex-shrink:0}
+details.qa[open] summary::after{content:"−";color:var(--brand-2)}
+details.qa .ans{padding:0 20px 17px 49px;font-size:13.5px;color:var(--muted);line-height:1.8;max-width:86ch}
+details.qa .ans b{color:var(--ink-2)}
+
+/* ---------- footer ---------- */
+.footer{background:#081828;color:#9fb4cf;padding:60px 0 34px}
+.footer .fgrid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:40px}
+.footer h5{color:#e7effa;font-size:14px;margin-bottom:14px;letter-spacing:.01em}
+.footer p,.footer li{font-size:12.5px;line-height:1.85;color:#8fa6c2}
+.footer ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.footer .fnote{border-top:1px solid rgba(255,255,255,.09);margin-top:34px;padding-top:20px;display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;font-size:11.5px;color:#6f88a6}
+.footer .fnote a{color:#b9cbe2;text-decoration:underline;text-underline-offset:3px}
+.footer .btn-print{padding:7px 13px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:transparent;color:#cfdcec;font-size:12px;cursor:pointer}
+.footer .btn-print:hover{background:rgba(255,255,255,.06)}
+.footer .fmono{font-family:var(--mono);font-size:11px;color:#7d95b2}
+@media (max-width:820px){.footer .fgrid{grid-template-columns:1fr;gap:26px}}
+
+/* ---------- subsection head ---------- */
+.sub-head{display:flex;align-items:baseline;gap:12px;margin:44px 0 18px;flex-wrap:wrap}
+.sub-head .n{font-family:var(--mono);font-size:11.5px;font-weight:600;letter-spacing:.12em;color:var(--brand-2)}
+.sub-head h3{font-size:20px;letter-spacing:-.015em}
+.sub-head p{margin-left:auto;font-size:12.5px;color:var(--muted);max-width:56ch}
+@media (max-width:760px){.sub-head p{margin-left:0}}
+
+/* ---------- reveal ---------- */
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.3,1)}
+.reveal.in{opacity:1;transform:none}
+.reveal.d1{transition-delay:.06s}
+.reveal.d2{transition-delay:.12s}
+.reveal.d3{transition-delay:.18s}
+@media (prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  svg.chart .grow,svg.chart .growx{transform:none;transition:none}
+  svg.chart .fade{opacity:1;transition:none}
+}
+
+/* ---------- visual polish ---------- */
+.band--alt{background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}
+.sec-head{position:relative}
+.sec-head::after{
+  content:attr(data-num);
+  position:absolute;right:0;top:-36px;
+  font:700 clamp(90px,10vw,150px)/1 var(--mono);
+  letter-spacing:-.06em;
+  color:rgba(46,90,156,.045);
+  -webkit-text-stroke:1px rgba(46,90,156,.10);
+  pointer-events:none;user-select:none;z-index:0;
+}
+.sec-head>*{position:relative;z-index:1}
+.sec-kicker::before{background:linear-gradient(90deg,#2e5a9c,#8eaadb)}
+.card{position:relative}
+.card::before{
+  content:"";position:absolute;left:24px;right:24px;top:0;height:2px;
+  border-radius:0 0 2px 2px;
+  background:linear-gradient(90deg,#2e5a9c,#8eaadb,#f0a13a);
+  opacity:0;transition:opacity .25s;pointer-events:none;
+}
+.card:hover::before{opacity:.55}
+table.tb tbody tr:nth-child(even):not(.is-best) td{background:#fcfdff}
+table.tb tbody tr:hover td{background:#f7fbff}
+table.tb tbody tr.is-best:hover td{background:#f1f9f4}
+.kpi{transition:border-color .2s,transform .2s,box-shadow .2s}
+.kpi:hover{border-color:#cfdcec;transform:translateY(-2px);box-shadow:var(--shadow)}
+.hero-card{position:relative}
+.hero-card::before{
+  content:"";position:absolute;left:22px;right:22px;top:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);
+  pointer-events:none;
+}
+.scroll-cue{
+  position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+  width:22px;height:36px;border:1px solid rgba(255,255,255,.22);border-radius:12px;
+  display:flex;justify-content:center;padding-top:7px;z-index:2;
+  transition:border-color .2s;
+}
+.scroll-cue:hover{border-color:rgba(255,255,255,.48)}
+.scroll-cue span{width:3px;height:7px;border-radius:2px;background:#cfe0f7;animation:cue 1.8s ease-in-out infinite}
+@keyframes cue{0%,100%{transform:translateY(0);opacity:.35}50%{transform:translateY(9px);opacity:1}}
+.footer{position:relative;overflow:hidden}
+.to-top{
+  position:fixed;right:26px;bottom:26px;width:44px;height:44px;border-radius:50%;
+  border:1px solid rgba(46,90,156,.18);background:rgba(255,255,255,.88);
+  backdrop-filter:blur(8px);color:var(--brand);display:grid;place-items:center;
+  cursor:pointer;opacity:0;pointer-events:none;transform:translateY(10px);
+  transition:opacity .25s,transform .25s,background .2s,border-color .2s;
+  z-index:55;box-shadow:0 12px 26px -16px rgba(15,42,77,.55);
+}
+.to-top.show{opacity:1;pointer-events:auto;transform:none}
+.to-top:hover{background:#fff;border-color:var(--brand-3)}
+.to-top svg{width:16px;height:16px}
+@media (max-width:1080px){.sec-head::after,.scroll-cue{display:none}}
+@media (max-width:640px){.to-top{right:16px;bottom:16px;width:40px;height:40px}}
+@media (prefers-reduced-motion:reduce){.scroll-cue span{animation:none}}
+
+/* ---------- print ---------- */
+@media print{
+  :root{--bg:#fff}
+  .nav,.progress,.hero-cta,.code-copy,.tooltip,.nav-score,.footer .btn-print{display:none!important}
+  .sec-head::after,.scroll-cue,.to-top,.card::before{display:none!important}
+  body{background:#fff;font-size:11pt}
+  .hero{background:#0a1c33!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .band{padding:22px 0}
+  .card,.chart-card,.table-wrap,details.qa,.code{break-inside:avoid;box-shadow:none}
+  .reveal{opacity:1!important;transform:none!important}
+  svg.chart .grow,svg.chart .growx{transform:none!important}
+  svg.chart .fade{opacity:1!important}
+  .footer{background:#081828!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  a[href^="#"]{text-decoration:none}
+}
+
+</style>
+<noscript><style>.reveal{opacity:1!important;transform:none!important}</style></noscript>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+
+<header class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="#top" aria-label="回到开头">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 16 16" fill="none"><rect x="1.6" y="8.6" width="2.6" height="5.2" rx="1" fill="#8eaadb"/><rect x="6.7" y="5.4" width="2.6" height="8.4" rx="1" fill="#dbe6f6"/><rect x="11.8" y="2.4" width="2.6" height="11.4" rx="1" fill="#f0a13a"/></svg>
+      </span>
+      <span class="brand-text"><b>S5E8 · 银行营销</b><span>DATA MINING REPORT</span></span>
+    </a>
+    <nav class="nav-links" aria-label="章节导航">
+      <a class="nav-link" href="#overview">概览</a>
+      <a class="nav-link" href="#data">数据</a>
+      <a class="nav-link" href="#pipeline">流程</a>
+      <a class="nav-link" href="#features">特征</a>
+      <a class="nav-link" href="#models">对比</a>
+      <a class="nav-link" href="#tuning">调参</a>
+      <a class="nav-link" href="#final">结果</a>
+      <a class="nav-link" href="#submission">提交</a>
+      <a class="nav-link" href="#insights">解读</a>
+    </nav>
+    <span class="nav-score"><span>OOF AUC</span><b>0.9676</b></span>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="container hero-inner">
+      <div class="hero-main">
+        <span class="eyebrow"><span class="pulse"></span>数据挖掘实践作业 · Kaggle Playground S5E8</span>
+        <h1>银行电话营销<br><span class="grad">定期存款认购预测</span></h1>
+        <p class="hero-lead">
+          75 万条历史通话、16 个特征、12.07% 的认购率。这个页面沿着 notebook 的执行顺序，
+          把数据探查、特征处理、算法对比、参数调优、全量 5 折交叉验证直到生成提交文件，一页讲清楚。
+        </p>
+        <div class="hero-chips">
+          <span class="chip">ROC AUC</span>
+          <span class="chip">二分类 · 概率输出</span>
+          <span class="chip">scikit-learn</span>
+          <span class="chip">HistGradientBoosting</span>
+          <span class="chip">5 折分层交叉验证</span>
+          <span class="chip">random_state = 42</span>
+        </div>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#overview">从头看流程
+            <svg viewBox="0 0 16 16" fill="none"><path d="M3 8h9M9 4.5 12.5 8 9 11.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <a class="btn btn-ghost" href="#final">查看最终结果</a>
+        </div>
+        <div class="hero-metrics">
+          <div class="metric"><b data-count="750000">750,000</b><span>训练样本</span></div>
+          <div class="metric"><b data-count="16">16</b><span>输入特征</span></div>
+          <div class="metric"><b data-count="12.07" data-dec="2" data-suffix="%">12.07%</b><span>正例率</span></div>
+          <div class="metric"><b data-count="0.9676" data-dec="4">0.9676</b><span>OOF AUC</span></div>
+        </div>
+      </div>
+
+      <aside class="hero-card" aria-label="最终结果摘要">
+        <div class="label"><span>最终模型 · 全量 5 折</span><span class="tag">OOF</span></div>
+        <div class="score">
+          <b data-count="0.967619" data-dec="6">0.967619</b>
+          <span>ROC AUC<br>750,000 行 / 5 折</span>
+        </div>
+        <div class="spark" id="hero-spark" aria-hidden="true"></div>
+        <div class="spark-cap"><span>Fold 1</span><span>0.9671 – 0.9683</span><span>Fold 5</span></div>
+        <div class="rows">
+          <div class="hrow">
+            <span>换模型 · 逻辑回归 → 提升树</span><b>+0.0213</b>
+            <span class="mini"><i class="warm" data-fill="100"></i></span>
+          </div>
+          <div class="hrow">
+            <span>调参 · 网格最差 → 最好</span><b>+0.0022</b>
+            <span class="mini"><i class="cool" data-fill="10.4"></i></span>
+          </div>
+        </div>
+        <div class="foot"><span>submission.csv · 250,000 行</span><b>均值 0.1204</b></div>
+      </aside>
+    </div>
+    <a class="scroll-cue" href="#overview" aria-label="向下查看"><span></span></a>
+  </section>
+  <section class="band band--alt" id="overview">
+    <div class="container">
+      <div class="sec-head reveal">
+        <div class="sec-kicker">01 / 问题定义</div>
+        <h2 class="sec-title">任务定义与评价指标</h2>
+        <p class="sec-lead">
+          正例只占 <b>12.07%</b>。如果只看准确率，一个“全部预测不认购”的空模型就能拿到 <b>87.93%</b>，
+          但它对“谁会认购”一无所知。这份作业关心排序能力，所以从头到尾只有一个指标：<b>ROC AUC</b>。
+        </p>
+      </div>
+
+      <div class="grid g-7-5">
+        <div class="card reveal">
+          <div class="card-head">
+            <div>
+              <div class="card-title">业务背景与名单排序</div>
+              <div class="card-sub">Bank Marketing · 二分类概率预测</div>
+            </div>
+            <span class="badge badge--mono">TABULAR</span>
+          </div>
+          <p class="card-note">
+            银行通过电话营销推广定期存款，每一次外呼都有成本。如果能在拨号前判断“哪些客户更可能认购”，
+            就可以把名单按意向从高到低排序，优先联系高概率客户，而不是平均地打完整个名单。
+          </p>
+          <div class="mt-16 stack">
+            <div class="center"><span class="badge">客户画像</span><span class="card-note">age、job、marital、education、balance、housing、loan、default</span></div>
+            <div class="center"><span class="badge">本次通话</span><span class="card-note">contact、day、month、duration、campaign</span></div>
+            <div class="center"><span class="badge">历史营销</span><span class="card-note">pdays、previous、poutcome</span></div>
+          </div>
+          <div class="mt-24 steps3">
+            <div><div class="step-k">STEP 1</div><div class="step-v">输出 0–1 概率</div></div>
+            <div><div class="step-k">STEP 2</div><div class="step-v">按概率排序</div></div>
+            <div><div class="step-k">STEP 3</div><div class="step-v">优先联系高意向</div></div>
+          </div>
+          <p class="card-note mt-16" style="color:var(--muted-2)">
+            数据来自 Kaggle Playground S5E8，基于经典 UCI Bank Marketing 数据集合成放大：训练 75 万行、测试 25 万行，字段含义与真实业务一致。
+          </p>
+        </div>
+
+        <div class="card card--tint reveal d1">
+          <div class="card-head">
+            <div class="card-title">评价指标对比：准确率与 AUC</div>
+            <span class="badge badge--warm">准确率陷阱</span>
+          </div>
+          <div class="paradox">
+            <div class="px-row">
+              <div class="px-top"><span>空模型 · 准确率</span><b>87.93%</b></div>
+              <div class="px-track"><div class="px-fill acc" data-w="87.93"></div></div>
+              <div class="px-note">看上去很高</div>
+            </div>
+            <div class="px-row">
+              <div class="px-top"><span>空模型 · AUC</span><b>0.500</b></div>
+              <div class="px-track"><div class="px-fill dud" data-w="50"></div></div>
+              <div class="px-note">等于抛硬币，没有任何区分能力</div>
+            </div>
+            <div class="px-row" style="border-top:1px dashed var(--line);padding-top:14px">
+              <div class="px-top"><span>本作业模型 · OOF AUC</span><b>0.9676</b></div>
+              <div class="px-track"><div class="px-fill auc" data-w="96.76"></div></div>
+              <div class="px-note">这才是作业真正想证明的东西</div>
+            </div>
+          </div>
+          <div class="callout mt-20" style="padding:14px 16px">
+            <div class="ic"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.2" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="4.8" r=".9" fill="currentColor"/></svg></div>
+            <div>
+              <h4 style="font-size:13px">AUC 的含义</h4>
+              <p style="font-size:12.5px">随机抽一个会认购的客户和一个不会认购的客户，模型给前者打分更高的概率。它不依赖具体阈值，正好对应“按意向排序、优先联系谁”的需求。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="data">
+    <div class="container">
+      <div class="sec-head reveal">
+        <div class="sec-kicker">02 / 数据说明</div>
+        <h2 class="sec-title">数据集规模与字段结构</h2>
+        <p class="sec-lead">
+          数据很干净：没有缺失值需要填充，数值特征量纲差异大，类别特征取值有限。
+          先看清分布，再决定怎么处理——下面每一张表、每一根柱子都是对原始 CSV 的直接统计。
+        </p>
+      </div>
+
+      <div class="kpi-strip reveal">
+        <div class="kpi"><b>750,000 × 18</b><span>训练集</span><small>id + 16 特征 + y</small></div>
+        <div class="kpi"><b>250,000 × 17</b><span>测试集</span><small>id + 16 特征</small></div>
+        <div class="kpi"><b>0</b><span>缺失值</span><small>train 与 test 均为 0</small></div>
+        <div class="kpi"><b>7 + 9</b><span>数值 + 类别特征</span><small>类别共 44 个取值</small></div>
+      </div>
+
+      <div class="grid g-7-5 mt-20">
+        <div class="card reveal">
+          <div class="card-head">
+            <div>
+              <div class="card-title">数值特征的量纲差异</div>
+              <div class="card-sub">describe() 摘要，train.csv 全量 750,000 行</div>
+            </div>
+            <span class="badge badge--mono">NUMERIC</span>
+          </div>
+          <div class="table-wrap" style="border:0;border-radius:10px">
+            <table class="tb" style="min-width:640px">
+              <thead><tr><th>字段</th><th class="num">min</th><th class="num">P50</th><th class="num">mean</th><th class="num">max</th><th>观察</th></tr></thead>
+              <tbody>
+                <tr><td class="strong">age</td><td class="num">18</td><td class="num">39</td><td class="num">40.9</td><td class="num">95</td><td class="muted">—</td></tr>
+                <tr><td class="strong">balance</td><td class="num">-8,019</td><td class="num">634</td><td class="num">1,204.1</td><td class="num">99,717</td><td class="muted">13.95% 为负</td></tr>
+                <tr><td class="strong">day</td><td class="num">1</td><td class="num">17</td><td class="num">16.1</td><td class="num">31</td><td class="muted">月内日期</td></tr>
+                <tr><td class="strong">duration</td><td class="num">1</td><td class="num">133</td><td class="num">256.2</td><td class="num">4,918</td><td class="muted">长尾最重，P99 = 1,206</td></tr>
+                <tr><td class="strong">campaign</td><td class="num">1</td><td class="num">2</td><td class="num">2.6</td><td class="num">63</td><td class="muted">&gt;10 次仅 15,045 行</td></tr>
+                <tr><td class="strong">pdays</td><td class="num">-1</td><td class="num">-1</td><td class="num">22.4</td><td class="num">871</td><td class="muted">89.6% 是哨兵值 -1</td></tr>
+                <tr><td class="strong">previous</td><td class="num">0</td><td class="num">0</td><td class="num">0.3</td><td class="num">200</td><td class="muted">多数为 0</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="card-note mt-12" style="color:var(--muted-2)">
+            两处需要特别处理：<span class="mono">pdays = -1</span> 表示“从未联系过”，不是负一天；<span class="mono">duration</span> 与目标相关性高达 0.52，但有“事后信息”问题（见第 09 节）。
+          </p>
+        </div>
+
+        <div class="card reveal d1">
+          <div class="card-head">
+            <div>
+              <div class="card-title">标签分布</div>
+              <div class="card-sub">正负例约 1 : 7.3</div>
+            </div>
+          </div>
+          <div class="donut-wrap">
+            <svg class="donut" id="donut" viewBox="0 0 176 176" role="img" aria-label="正例 12.07%，负例 87.93%"></svg>
+            <div class="donut-legend">
+              <div class="row"><span class="dot" style="background:#2e5a9c"></span><span>认购 <b>y = 1</b></span></div>
+              <div class="row"><span class="mono" style="color:var(--ink)">90,488</span><span style="color:var(--muted-2)">行 · 12.07%</span></div>
+              <div class="row" style="margin-top:6px"><span class="dot" style="background:#dbe6f4"></span><span>未认购 <b>y = 0</b></span></div>
+              <div class="row"><span class="mono" style="color:var(--ink)">659,512</span><span style="color:var(--muted-2)">行 · 87.93%</span></div>
+            </div>
+          </div>
+          <div class="callout callout--good mt-20" style="padding:14px 16px">
+            <div class="ic"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.6 6.4 12 13 4.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div>
+              <h4 style="font-size:13px">不需要处理缺失值</h4>
+              <p style="font-size:12.5px">train 与 test 的缺失值都是 0，所以 notebook 里没有填充步骤，也就不用担心填充方式带来的信息泄漏。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-20 reveal">
+        <div class="card-head">
+          <div>
+            <div class="card-title">类别特征与认购率差异</div>
+            <div class="card-sub">切换字段查看各取值的样本量与认购率；橙色竖线是整体正例率 12.07%</div>
+          </div>
+          <span class="badge badge--mono">CATEGORICAL</span>
+        </div>
+        <div class="cat-tabs" id="cat-tabs" role="tablist" aria-label="选择类别字段"></div>
+        <div class="cat-scale"><span>0%</span><span id="cat-scale-max">—</span></div>
+        <div class="cat-list" id="cat-list" role="tabpanel" aria-live="polite"></div>
+        <div class="cat-insight" id="cat-insight"></div>
+      </div>
+
+      <details class="dict mt-20 reveal">
+        <summary>字段字典：16 个输入特征 + 目标 <span class="badge badge--mono">17 项</span></summary>
+        <div class="dict-body">
+          <div class="table-wrap" style="border:0;border-radius:0;margin-top:14px">
+            <table class="tb" style="min-width:760px">
+              <thead><tr><th>字段</th><th>类型</th><th>含义</th><th>取值 / 范围</th><th>建模注意点</th></tr></thead>
+              <tbody>
+                <tr><td class="strong">age</td><td class="muted">数值</td><td>客户年龄</td><td class="mono">18 – 95</td><td class="muted">与目标几乎线性无关</td></tr>
+                <tr><td class="strong">job</td><td class="muted">类别 · 12</td><td>职业</td><td class="muted">management、blue-collar、technician…</td><td class="muted">学生、退休认购率最高</td></tr>
+                <tr><td class="strong">marital</td><td class="muted">类别 · 3</td><td>婚姻状况</td><td class="muted">married / single / divorced</td><td class="muted">单身高出约 7 个百分点</td></tr>
+                <tr><td class="strong">education</td><td class="muted">类别 · 4</td><td>教育程度</td><td class="muted">primary / secondary / tertiary / unknown</td><td class="muted">高等教育认购率最高</td></tr>
+                <tr><td class="strong">default</td><td class="muted">类别 · 2</td><td>是否有违约记录</td><td class="muted">yes / no</td><td class="muted">yes 仅 12,849 行</td></tr>
+                <tr><td class="strong">balance</td><td class="muted">数值</td><td>年均账户余额</td><td class="mono">-8,019 – 99,717</td><td class="muted">有负值，长尾</td></tr>
+                <tr><td class="strong">housing</td><td class="muted">类别 · 2</td><td>是否有房贷</td><td class="muted">yes / no</td><td class="muted">有房贷认购率更低</td></tr>
+                <tr><td class="strong">loan</td><td class="muted">类别 · 2</td><td>是否有个人贷款</td><td class="muted">yes / no</td><td class="muted">有贷款认购率更低</td></tr>
+                <tr><td class="strong">contact</td><td class="muted">类别 · 3</td><td>联系方式</td><td class="muted">cellular / telephone / unknown</td><td class="muted">unknown 仅 4.3%</td></tr>
+                <tr><td class="strong">day</td><td class="muted">数值</td><td>最后一次联系是几号</td><td class="mono">1 – 31</td><td class="muted">周期性弱</td></tr>
+                <tr><td class="strong">month</td><td class="muted">类别 · 12</td><td>最后一次联系月份</td><td class="muted">jan – dec</td><td class="muted">与活动节奏强相关</td></tr>
+                <tr><td class="strong">duration</td><td class="muted">数值</td><td>最后一次通话时长（秒）</td><td class="mono">1 – 4,918</td><td class="muted">最强单变量，但属事后信息</td></tr>
+                <tr><td class="strong">campaign</td><td class="muted">数值</td><td>本次营销活动联系次数</td><td class="mono">1 – 63</td><td class="muted">极端值截断到 10</td></tr>
+                <tr><td class="strong">pdays</td><td class="muted">数值 / 哨兵</td><td>距上次营销联系的天数</td><td class="mono">-1 – 871</td><td class="muted">-1 表示从未联系</td></tr>
+                <tr><td class="strong">previous</td><td class="muted">数值</td><td>本次之前联系次数</td><td class="mono">0 – 200</td><td class="muted">多数为 0</td></tr>
+                <tr><td class="strong">poutcome</td><td class="muted">类别 · 4</td><td>上一次营销活动的结果</td><td class="muted">success / failure / other / unknown</td><td class="muted">success 认购率 76.4%</td></tr>
+                <tr><td class="strong" style="color:var(--brand)">y</td><td class="muted">目标</td><td>是否认购定期存款</td><td class="mono">0 / 1</td><td class="muted">正例率 12.07%</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="card-note mt-12" style="color:var(--muted-2)">
+            单变量统计只说明“这个字段与结果相关”，不等于模型的因果结论：月份与活动节奏、客户群体互相纠缠，真正的贡献要看模型。
+          </p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="band band--alt" id="pipeline">
+    <div class="container">
+      <div class="sec-head reveal">
+        <div class="sec-kicker">03 / 技术路线</div>
+        <h2 class="sec-title">从数据到提交的完整流程</h2>
+        <p class="sec-lead">
+          notebook 的执行顺序就是下面六步。实验阶段用 15 万 / 5 万的子样本做对比与调参，
+          确定方案之后再回到全量 75 万训练最终模型——这条主线也决定了后面每个章节的顺序。
+        </p>
+      </div>
+
+      <div class="pipe reveal">
+        <a class="step" href="#data">
+          <span class="n">01</span>
+          <h5>数据探查</h5>
+          <p>规模、正例率、缺失值，确认数据不需要填充。</p>
+          <span class="t"><span>秒级</span><span class="go">查看 →</span></span>
+        </a>
+        <a class="step" href="#features">
+          <span class="n">02</span>
+          <h5>特征处理</h5>
+          <p>4 个手工特征 + 9 个类别列统一整数编码。</p>
+          <span class="t"><span>秒级</span><span class="go">查看 →</span></span>
+        </a>
+        <a class="step" href="#models">
+          <span class="n">03</span>
+          <h5>实验设置</h5>
+          <p>分层抽 15 万训练 / 5 万验证，固定随机种子。</p>
+          <span class="t"><span>秒级</span><span class="go">查看 →</span></span>
+        </a>
+        <a class="step" href="#models">
+          <span class="n">04</span>
+          <h5>算法对比</h5>
+          <p>逻辑回归 → 决策树 → 随机森林 → 提升树。</p>
+          <span class="t"><span>48 s</span><span class="go">查看 →</span></span>
+        </a>
+        <a class="step" href="#tuning">
+          <span class="n">05</span>
+          <h5>参数调优</h5>
+          <p>学习率 × 叶子数网格，再看树的数量。</p>
+          <span class="t"><span>≈ 100 s</span><span class="go">查看 →</span></span>
+        </a>
+        <a class="step" href="#final">
+          <span class="n">06</span>
+          <h5>全量 5 折</h5>
+          <p>75 万行交叉验证，测试集 5 折平均后提交。</p>
+          <span class="t"><span>≈ 238 s</span><span class="go">查看 →</span></span>
+        </a>
+      </div>
+
+      <div class="flow-note reveal">
+        <span><span class="k">总耗时</span> 约 6 分 30 秒</span>
+        <span><span class="k">硬件</span> 16 核 CPU，无 GPU</span>
+        <span><span class="k">随机种子</span> 42（划分、初始化、交叉验证全部固定）</span>
+        <span><span class="k">指标</span> ROC AUC</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="features">
+    <div class="container">
+      <div class="sec-head reveal">
+        <div class="sec-kicker">04 / 特征工程</div>
+        <h2 class="sec-title">特征构造与统一编码</h2>
+        <p class="sec-lead">
+          原始特征已经比较完整，所以特征工程做得很克制：<b>4 个可解释的小改动</b>，
+          加上一套“训练集确定、测试集沿用”的编码规则。下面四张卡片就是 notebook 里 <span class="mono">feature_engineer()</span> 的全部内容。
+        </p>
+      </div>
+
+      <div class="grid g2">
+        <div class="feat-card reveal">
+          <span class="fnum">FEAT 01/04</span>
+          <div class="feat-map"><span class="from">month</span><span class="ar">→</span><span class="to">month_num</span></div>
+          <h4>月份映射为有序数值</h4>
+          <p>把 jan–dec 映射成 1–12，保留月份的先后顺序。类别编码会把“顺序”这一信息丢掉，转成序号后模型才能自然地用“月份 ≤ 5”这类有序切分。</p>
+          <div class="mini-viz">
+            <div class="cap"><span>month → month_num</span><span>1 – 12</span></div>
+            <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;font-size:9.5px;text-align:center">
+              <span style="background:#eef3fa;border-radius:4px;padding:3px 0;color:#4a6488">jan<span class="mono" style="display:block;color:#2e5a9c">1</span></span>
+              <span style="background:#eef3fa;border-radius:4px;padding:3px 0;color:#4a6488">feb<span class="mono" style="display:block;color:#2e5a9c">2</span></span>
+              <span style="background:#eef3fa;border-radius:4px;padding:3px 0;color:#4a6488">mar<span class="mono" style="display:block;color:#2e5a9c">3</span></span>
+              <span style="background:#eef3fa;border-radius:4px;padding:3px 0;color:#4a6488">apr<span class="mono" style="display:block;color:#2e5a9c">4</span></span>
+              <span style="background:#eef3fa;border-radius:4px;padding:3px 0;color:#4a6488">may<span class="mono" style="display:block;color:#2e5a9c">5</span></span>
+              <span style="background:#eef3fa;border-radius:4px;padding:3px 0;color:#4a6488">jun<span class="mono" style="display:block;color:#2e5a9c">6</span></span>
+              <span style="background:#eef3fa;border-radius:4px;padding:3px 0;color:#4a6488">jul<span class="mono" style="display:block;color:#2e5a9c">7</span></span>
+              <span style="background:#eef3fa;border-radius:4px;padding:3px 0;color:#4a6488">aug<span class="mono" style="display:block;color:#2e5a9c">8</span></span>
+              <span style="background:#eef3fa;border-radius:4px;padding:3px 0;color:#4a6488">sep<span class="mono" style="display:block;color:#2e5a9c">9</span></span>
+              <span style="background:#eef3fa;border-radius:4px;padding:3px 0;color:#4a6488">oct<span class="mono" style="display:block;color:#2e5a9c">10</span></span>
+              <span style="background:#eef3fa;border-radius:4px;padding:3px 0;color:#4a6488">nov<span class="mono" style="display:block;color:#2e5a9c">11</span></span>
+              <span style="background:#eef3fa;border-radius:4px;padding:3px 0;color:#4a6488">dec<span class="mono" style="display:block;color:#2e5a9c">12</span></span>
+            </div>
+          </div>
+          <div class="feat-meta"><span class="badge">有序编码</span><span class="badge badge--mono">int</span></div>
+        </div>
+
+        <div class="feat-card reveal d1">
+          <span class="fnum">FEAT 02/04</span>
+          <div class="feat-map"><span class="from">pdays</span><span class="ar">→</span><span class="to">pdays_contacted</span></div>
+          <h4>标记“从未联系”群体</h4>
+          <p><span class="mono">pdays = -1</span> 不是“负一天”，而是“从未被联系过”的哨兵值。转成 0/1 之后，模型可以直接把这个群体当成一类来处理。</p>
+          <div class="mini-viz">
+            <div class="px-row" style="gap:3px">
+              <div class="px-top" style="font-size:10.5px"><span>从未联系 · 672,434 行</span><b>10.19%</b></div>
+              <div class="px-track" style="height:16px"><div class="px-fill acc" data-w="36"></div></div>
+            </div>
+            <div class="px-row" style="gap:3px;margin-top:6px">
+              <div class="px-top" style="font-size:10.5px"><span>曾被联系 · 77,566 行</span><b>28.32%</b></div>
+              <div class="px-track" style="height:16px"><div class="px-fill auc" data-w="100"></div></div>
+            </div>
+          </div>
+          <div class="feat-meta"><span class="badge">0 / 1</span><span class="badge badge--warm">哨兵值</span></div>
+        </div>
+
+        <div class="feat-card reveal">
+          <span class="fnum">FEAT 03/04</span>
+          <div class="feat-map"><span class="from">duration</span><span class="ar">→</span><span class="to">duration_log</span></div>
+          <h4>通话时长取对数</h4>
+          <p>中位数 133 秒，P99 已到 1,206 秒，最长 4,918 秒。取 <span class="mono">log1p</span> 把数值范围压到 0–8.5，手工检查极端值更方便；树模型对单调变换不敏感，所以提分有限（见下方消融）。</p>
+          <div class="mini-viz">
+            <div class="cap"><span>原始 duration（对数轴）</span><span>长尾</span></div>
+            <div class="mini-bars" data-mini="dur-raw"></div>
+            <div class="cap" style="margin-top:6px"><span>log1p(duration)</span><span>更集中</span></div>
+            <div class="mini-bars log" data-mini="dur-log"></div>
+          </div>
+          <div class="feat-meta"><span class="badge badge--mono">log1p</span><span class="badge">单调变换</span></div>
+        </div>
+
+        <div class="feat-card reveal d1">
+          <span class="fnum">FEAT 04/04</span>
+          <div class="feat-map"><span class="from">campaign</span><span class="ar">→</span><span class="to">campaign_cap</span></div>
+          <h4>联系次数截断到 10</h4>
+          <p>最多有人被联系了 63 次。极端值样本极少，却容易让树在某几个点上过拟合，所以训练时统一截断到 10。</p>
+          <div class="mini-viz">
+            <div class="cap"><span>本次联系次数分布</span><span>1 – 11+</span></div>
+            <div class="mini-bars" data-mini="campaign"></div>
+            <div class="cap" style="margin-top:4px"><span>1</span><span>11+（&gt;10 次共 15,045 行）</span></div>
+          </div>
+          <div class="feat-meta"><span class="badge badge--mono">clip(upper=10)</span><span class="badge">稳健性</span></div>
+        </div>
+      </div>
+
+      <div class="grid g-5-7 mt-20">
+        <div class="card reveal">
+          <div class="card-head">
+            <div>
+              <div class="card-title">类别编码的一致性</div>
+              <div class="card-sub">9 个类别列 · 44 个取值 · 统一转成整数</div>
+            </div>
+          </div>
+          <p class="card-note">编码表由训练集确定，测试集沿用同一套顺序。以 <span class="mono">job</span> 为例：</p>
+          <div class="mt-12" style="display:flex;flex-wrap:wrap;gap:6px">
+            <span class="badge badge--mono">admin. → 0</span>
+            <span class="badge badge--mono">blue-collar → 1</span>
+            <span class="badge badge--mono">entrepreneur → 2</span>
+            <span class="badge badge--mono">housemaid → 3</span>
+            <span class="badge badge--mono">management → 4</span>
+            <span class="badge badge--mono">retired → 5</span>
+            <span class="badge badge--mono">self-employed → 6</span>
+            <span class="badge badge--mono">services → 7</span>
+            <span class="badge badge--mono">student → 8</span>
+            <span class="badge badge--mono">technician → 9</span>
+            <span class="badge badge--mono">unemployed → 10</span>
+            <span class="badge badge--mono">unknown → 11</span>
+          </div>
+          <div class="callout callout--warm mt-16" style="padding:14px 16px">
+            <div class="ic"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2.6 14 13H2L8 2.6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 6.2v3.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="11.2" r=".85" fill="currentColor"/></svg></div>
+            <div>
+              <h4 style="font-size:13px">编码不一致的后果</h4>
+              <p style="font-size:12.5px">同一个职业在训练集是 9、在测试集是 5，模型学到的规律立刻错位，预测会直接失真。这是初学者最容易犯、也最隐蔽的错误之一。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card reveal d1">
+          <div class="card-head">
+            <div>
+              <div class="card-title">消融实验：这 4 个特征提升很小</div>
+              <div class="card-sub">消融实验 · 16 个原始特征 vs 加上 4 个手工特征</div>
+            </div>
+            <span class="badge badge--bad">ΔAUC &lt; 0.0001</span>
+          </div>
+          <p class="card-note">在验证集上的差异小于 0.0001。原因不难理解：</p>
+          <div class="stack mt-12">
+            <p class="card-note"><b style="color:var(--ink-2)">duration_log</b> 是单调变换，树模型对单调变换本来就不敏感。</p>
+            <p class="card-note"><b style="color:var(--ink-2)">pdays_contacted</b> 与 pdays 信息重复，树自己就能靠 pdays ≤ 0 分开。</p>
+            <p class="card-note"><b style="color:var(--ink-2)">campaign_cap</b> 只影响极少数极端样本。</p>
+            <p class="card-note"><b style="color:var(--ink-2)">month_num</b> 与 month 并存，信息也重复。</p>
+          </div>
+          <p class="card-note mt-16" style="padding-top:14px;border-top:1px dashed var(--line)">
+            所以它们的价值是<b style="color:var(--ink-2)">对极端值更稳健、模型更好解释</b>，而不是提分。
+            这份作业真正的提升来自模型选择（第 05 节）。
+          </p>
+        </div>
+      </div>
+
+      <div class="code-group reveal">
+        <div class="code" data-file="features.py" data-lang="Python">
+          <div class="code-head"><span class="dots"><i></i><i></i><i></i></span><span class="fname">features.py</span><span class="lang">Python</span><button class="code-copy" type="button">复制</button></div>
+          <script type="text/plain" class="code-src">
+def feature_engineer(df):
+    df = df.copy()
+    df["month_num"] = df["month"].map(MONTHS)                # 月份序号
+    df["pdays_contacted"] = (df["pdays"] != -1).astype(int)  # 是否曾联系
+    df["duration_log"] = np.log1p(df["duration"])            # 压缩长尾
+    df["campaign_cap"] = df["campaign"].clip(upper=10)       # 截尾
+    return df
+
+# 训练集确定类别顺序，测试集沿用同一套编码
+CATEGORIES = {c: sorted(X_all[c].unique()) for c in CAT_COLS}
+for c in CAT_COLS:
+    X_all[c]  = pd.Categorical(X_all[c],  categories=CATEGORIES[c]).codes
+    X_test[c] = pd.Categorical(X_test[c], categories=CATEGORIES[c]).codes
+          </script>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band band--alt" id="models">
+    <div class="container">
+      <div class="sec-head reveal">
+        <div class="sec-kicker">05 / 模型对比</div>
+        <h2 class="sec-title">从线性模型到提升树</h2>
+        <p class="sec-lead">
+          为保证可比性，四个模型在同一份 15 万训练集上训练、在同一个 5 万验证集上评分。
+          逻辑回归是线性基线，决策树引入非线性，随机森林用 bagging 降方差，提升树串行纠错。
+          结果是：<b>从线性模型到提升树，验证 AUC 提升 0.0213</b>。
+        </p>
+      </div>
+
+      <div class="grid g-7-5">
+        <div class="card reveal">
+          <div class="card-head">
+            <div>
+              <div class="card-title">固定的训练集 / 验证集</div>
+              <div class="card-sub">从 750,000 行分层抽取实验子样本 200,000 行 · random_state=42</div>
+            </div>
+            <span class="badge badge--mono">150K / 50K</span>
+          </div>
+          <div class="split" role="img" aria-label="实验训练集 15 万，固定验证集 5 万">
+            <div class="s-train"><b>150,000</b><span>实验训练集</span></div>
+            <div class="s-valid"><b>50,000</b><span>固定验证集</span></div>
+          </div>
+          <div class="split-key">
+            <span><i style="background:#2e5a9c"></i>实验训练集 150,000 行 · 75%</span>
+            <span><i style="background:#9db9dd"></i>验证集 50,000 行 · 25%</span>
+            <span><i style="background:#eef3fa;border:1px solid var(--line)"></i>其余 550,000 行本阶段不使用</span>
+          </div>
+          <div class="grid g2 mt-20" style="gap:12px">
+            <div class="kpi" style="box-shadow:none"><b>12.07%</b><span>实验训练集正例率</span></div>
+            <div class="kpi" style="box-shadow:none"><b>12.07%</b><span>验证集正例率</span></div>
+          </div>
+        </div>
+
+        <div class="card reveal d1">
+          <div class="card-head">
+            <div class="card-title">子样本实验的考虑</div>
+            <span class="badge badge--warm">时间成本</span>
+          </div>
+          <p class="card-note">
+            这一阶段要训练 <b style="color:var(--ink-2)">十几个模型</b>：4 个算法 + 6 组网格 + 4 次树数量实验。
+            如果每次都喂 75 万行，单次训练就要一分多钟，整份 notebook 会跑到一小时以上。
+          </p>
+          <div class="stack mt-16">
+            <div class="center"><span class="dot dot--valid"></span><span class="card-note">所有模型共享同一份数据、同一个验证集、同一个指标</span></div>
+            <div class="center"><span class="dot dot--valid"></span><span class="card-note">子样本上的<b style="color:var(--ink-2)">相对排序</b>通常能代表全量</span></div>
+            <div class="center"><span class="dot dot--valid"></span><span class="card-note">代价是绝对分数略低于全量：HGB 子样本 0.9662，全量 5 折 0.9676</span></div>
+          </div>
+          <div class="callout mt-20" style="padding:14px 16px">
+            <div class="ic"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.6 6.4 12 13 4.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div>
+              <h4 style="font-size:13px">统一评估基准</h4>
+              <p style="font-size:12.5px">实验阶段不交叉验证，只用这一个固定验证集，保证每次比较的基准完全一致；5 折留给最终模型。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-head reveal">
+        <span class="n">5.1</span>
+        <h3>四类模型的对比</h3>
+        <p>评估时同时看训练 AUC 与验证 AUC，两者的差距反映过拟合程度。</p>
+      </div>
+
+      <div class="card chart-card reveal">
+        <div class="chart-top">
+          <div>
+            <div class="card-title">验证 AUC 对比</div>
+            <div class="card-sub">150,000 训练 / 50,000 验证 · 柱长从 0.94 截断，不代表绝对差距</div>
+          </div>
+          <div class="legend">
+            <span><i class="dot dot--train"></i>训练 AUC</span>
+            <span><i class="dot dot--valid"></i>验证 AUC</span>
+          </div>
+        </div>
+        <div class="chart-wrap" id="chart-models"></div>
+      </div>
+
+      <div class="table-wrap mt-20 reveal">
+        <table class="tb">
+          <thead><tr><th>模型</th><th class="num">训练 AUC</th><th class="num">验证 AUC</th><th class="num">训练 − 验证</th><th class="num">用时</th><th>特点</th></tr></thead>
+          <tbody>
+            <tr class="is-best"><td class="strong">HistGradientBoosting</td><td class="num">0.9737</td><td class="num strong">0.9662</td><td class="num">0.0075</td><td class="num">14.1 s</td><td class="muted">boosting，串行纠错 · <b style="color:var(--good)">最优</b></td></tr>
+            <tr><td class="strong">Random Forest</td><td class="num">0.9720</td><td class="num strong">0.9622</td><td class="num">0.0098</td><td class="num">31.9 s</td><td class="muted">bagging，200 棵树平均</td></tr>
+            <tr><td class="strong">Decision Tree</td><td class="num">0.9580</td><td class="num strong">0.9506</td><td class="num">0.0074</td><td class="num">0.7 s</td><td class="muted">单棵树，max_depth=10</td></tr>
+            <tr><td class="strong">Logistic Regression</td><td class="num">0.9445</td><td class="num strong">0.9449</td><td class="num">−0.0004</td><td class="num">1.4 s</td><td class="muted">线性基线，标准化 + one-hot</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid g4 mt-20">
+        <div class="card card--flat reveal">
+          <div class="card-title" style="color:var(--brand)">线性模型的上限</div>
+          <p class="card-note mt-8">逻辑回归只能学“特征加权求和”。通话时长、月份与联系方式、上次营销结果之间的关系是非线性和交互的，它表达不了，所以停在 0.9449。</p>
+        </div>
+        <div class="card card--flat reveal d1">
+          <div class="card-title" style="color:var(--brand)">单棵决策树方差大</div>
+          <p class="card-note mt-8">决策树有了非线性（0.9506），但训练集稍微变一点，树结构可能大变，方差太大，单棵树的验证分数上不去。</p>
+        </div>
+        <div class="card card--flat reveal d2">
+          <div class="card-title" style="color:var(--brand)">随机森林的方差控制</div>
+          <p class="card-note mt-8">200 棵树平均后方差明显下降，比单树高 0.0116；但训练 AUC 0.9720、验证 0.9622，仍有 0.0098 的差距，耗时也最长（31.9 s）。</p>
+        </div>
+        <div class="card card--flat reveal d3">
+          <div class="card-title" style="color:var(--brand)">提升树的精度与效率</div>
+          <p class="card-note mt-8">串行纠错让 HGB 拿到最高验证分 0.9662，比随机森林高 0.0040，用时却只有一半多——直方图分箱让每次分裂的候选切分点更少。</p>
+        </div>
+      </div>
+
+      <div class="delta mt-24 reveal">
+        <div class="dcell">
+          <span class="k">换模型前 · 逻辑回归</span>
+          <b style="color:#a9c0df">0.9449</b>
+          <small>验证 AUC</small>
+        </div>
+        <div class="dbridge">
+          <span class="k">提升</span>
+          <b>+0.0213</b>
+          <span class="line"></span>
+        </div>
+        <div class="dcell right">
+          <span class="k">换模型后 · 提升树 HGB</span>
+          <b style="color:#ffd79a">0.9662</b>
+          <small>验证 AUC</small>
+        </div>
+        <div class="dfoot">比后续网格搜索的全部空间（<b>+0.0022</b>）大近 10 倍</div>
+      </div>
+
+      <div class="code-group reveal">
+        <div class="code" data-file="models.py" data-lang="Python">
+          <div class="code-head"><span class="dots"><i></i><i></i><i></i></span><span class="fname">models.py</span><span class="lang">Python</span><button class="code-copy" type="button">复制</button></div>
+          <script type="text/plain" class="code-src">
+# 树模型用整数编码；HGB 额外声明 categorical_features 并开启早停
+experiments = [
+    ("Logistic Regression", logreg, X_exp, X_val),
+    ("Decision Tree", dt, X_exp_enc, X_val_enc),
+    ("Random Forest", rf, X_exp_enc, X_val_enc),
+    ("HistGradientBoosting", hgb, X_exp_enc, X_val_enc),
+]
+
+for name, model, X_tr, X_va in experiments:
+    model.fit(X_tr, y_exp)
+    train_auc = roc_auc_score(y_exp, model.predict_proba(X_tr)[:, 1])
+    val_auc   = roc_auc_score(y_val, model.predict_proba(X_va)[:, 1])
+    print(f"{name:22s} 训练={train_auc:.4f}  验证={val_auc:.4f}")
+          </script>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="tuning">
+    <div class="container">
+      <div class="sec-head reveal">
+        <div class="sec-kicker">06 / 参数调优</div>
+        <h2 class="sec-title">学习率、叶子数与树数量</h2>
+        <p class="sec-lead">
+          固定 <span class="mono">max_iter=400</span>、<span class="mono">min_samples_leaf=50</span>、<span class="mono">l2=1.0</span>，
+          只搜两个影响最大的参数。网格里的 6 个点与基线使用完全相同的其他参数，所以分数可以直接对照。
+        </p>
+      </div>
+
+      <div class="grid g-7-5">
+        <div class="card chart-card reveal">
+          <div class="chart-top">
+            <div>
+              <div class="card-title">网格搜索：learning_rate × max_leaf_nodes</div>
+              <div class="card-sub">max_iter = 400 · 柱顶数值为验证 AUC</div>
+            </div>
+            <div class="legend">
+              <span><i style="background:#8eaadb"></i>15 叶</span>
+              <span><i style="background:#2e5a9c"></i>31 叶</span>
+            </div>
+          </div>
+          <div class="chart-wrap" id="chart-grid"></div>
+        </div>
+
+        <div class="card reveal d1">
+          <div class="card-title">结果解读</div>
+          <div class="stack mt-16">
+            <div>
+              <div class="between"><span class="card-note">叶子数 15 → 31（每个学习率都提升）</span><span class="badge badge--good">+0.0001 ~ +0.0016</span></div>
+            </div>
+            <div>
+              <div class="between"><span class="card-note">学习率 0.03 → 0.1（31 叶）</span><span class="badge">+0.0006</span></div>
+            </div>
+            <div>
+              <div class="between"><span class="card-note">网格最好 vs 基线（0.05 / 31）</span><span class="badge badge--mono">0.9663 vs 0.9662</span></div>
+            </div>
+          </div>
+          <div class="callout mt-20" style="padding:14px 16px">
+            <div class="ic"><svg viewBox="0 0 16 16" fill="none"><path d="M3.2 12.8 6.6 8.6l3 2.1 4-5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 4.6h3v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div>
+              <h4 style="font-size:13px">基线参数已经接近最优</h4>
+              <p style="font-size:12.5px">最好的组合只比基线高 0.0001。调参的价值不在于“挤牙膏”，而在于确认基线位置，并量化两个参数各自的权重。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap mt-20 reveal">
+        <table class="tb">
+          <thead><tr><th>learning_rate</th><th class="num">max_leaf_nodes</th><th class="num">验证 AUC</th><th class="num">实际树数</th><th class="num">用时</th><th></th></tr></thead>
+          <tbody>
+            <tr class="is-best"><td class="mono strong">0.10</td><td class="num">31</td><td class="num strong">0.9663</td><td class="num">288</td><td class="num">9.2 s</td><td><span class="badge badge--good">最佳</span></td></tr>
+            <tr><td class="mono strong">0.05</td><td class="num">31</td><td class="num">0.9662</td><td class="num">400</td><td class="num">13.5 s</td><td class="muted">基线</td></tr>
+            <tr><td class="mono strong">0.10</td><td class="num">15</td><td class="num">0.9662</td><td class="num">400</td><td class="num">11.1 s</td><td class="muted">收敛快</td></tr>
+            <tr><td class="mono strong">0.03</td><td class="num">31</td><td class="num">0.9657</td><td class="num">400</td><td class="num">13.1 s</td><td class="muted">学得慢</td></tr>
+            <tr><td class="mono strong">0.05</td><td class="num">15</td><td class="num">0.9653</td><td class="num">400</td><td class="num">11.6 s</td><td class="muted">—</td></tr>
+            <tr><td class="mono strong">0.03</td><td class="num">15</td><td class="num">0.9641</td><td class="num">400</td><td class="num">11.5 s</td><td class="muted">最差</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sub-head reveal">
+        <span class="n">6.2</span>
+        <h3>树数量的影响</h3>
+        <p>学习率与树的数量是一对搭档，用最佳组合单独再扫一遍 max_iter。</p>
+      </div>
+
+      <div class="grid g-7-5">
+        <div class="card chart-card reveal">
+          <div class="chart-top">
+            <div>
+              <div class="card-title">验证 AUC 随 max_iter 的变化</div>
+              <div class="card-sub">learning_rate = 0.1 · max_leaf_nodes = 31 · 早停已开启</div>
+            </div>
+            <div class="legend"><span><i style="background:#2e5a9c"></i>验证 AUC</span></div>
+          </div>
+          <div class="chart-wrap" id="chart-sweep"></div>
+        </div>
+        <div class="card reveal d1">
+          <div class="card-title">早停稳定在 288 棵</div>
+          <p class="card-note mt-8">
+            100 棵到 250 棵提升约 0.0009；250 棵以后，400 和 700 的结果完全相同——早停都在 288 棵触发。
+            继续放宽上限只是多花时间，不会提分。
+          </p>
+          <div class="table-wrap mt-16" style="border-radius:10px">
+            <table class="tb" style="min-width:0">
+              <thead><tr><th>max_iter</th><th class="num">实际树数</th><th class="num">验证 AUC</th></tr></thead>
+              <tbody>
+                <tr><td class="mono strong">100</td><td class="num">100</td><td class="num">0.9654</td></tr>
+                <tr><td class="mono strong">250</td><td class="num">250</td><td class="num strong">0.9663</td></tr>
+                <tr><td class="mono strong">400</td><td class="num">288</td><td class="num strong">0.9663</td></tr>
+                <tr><td class="mono strong">700</td><td class="num">288</td><td class="num strong">0.9663</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-head reveal">
+        <span class="n">6.3</span>
+        <h3>调参收益的量化</h3>
+        <p>在同一尺度下比较两项收益。</p>
+      </div>
+
+      <div class="grid g2">
+        <div class="card reveal">
+          <div class="card-title">提升幅度对比</div>
+          <div class="paradox mt-16">
+            <div class="px-row">
+              <div class="px-top"><span>换模型 · 逻辑回归 → 提升树</span><b>+0.0213</b></div>
+              <div class="px-track"><div class="px-fill auc" data-w="100"></div></div>
+            </div>
+            <div class="px-row">
+              <div class="px-top"><span>调参 · 网格最差 → 最好</span><b>+0.0022</b></div>
+              <div class="px-track"><div class="px-fill" style="background:linear-gradient(90deg,#f0a13a,#ffd79a)" data-w="10.4"></div></div>
+            </div>
+          </div>
+          <p class="card-note mt-16">模型选择带来的收益约为调参的 <b style="color:var(--ink-2)">10 倍</b>。实际做项目时，应该先把模型大类选对，再在最优模型上细调；反过来做，会在一个上限不高的模型上白费很多时间。</p>
+        </div>
+        <div class="card reveal d1">
+          <div class="card-title">最终参数</div>
+          <div class="mt-12" style="display:flex;flex-wrap:wrap;gap:8px">
+            <span class="badge badge--mono">learning_rate = 0.1</span>
+            <span class="badge badge--mono">max_leaf_nodes = 31</span>
+            <span class="badge badge--mono">max_iter = 400</span>
+            <span class="badge badge--mono">min_samples_leaf = 50</span>
+            <span class="badge badge--mono">l2_regularization = 1.0</span>
+            <span class="badge badge--mono">early_stopping = 10%</span>
+            <span class="badge badge--mono">n_iter_no_change = 30</span>
+          </div>
+          <div class="callout callout--good mt-16" style="padding:14px 16px">
+            <div class="ic"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.6 6.4 12 13 4.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div>
+              <h4 style="font-size:13px">下一步：全量 5 折</h4>
+              <p style="font-size:12.5px">这组参数直接进入第 07 节，在 75 万行上做 5 折交叉验证，得到 OOF AUC 与提交文件。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-group reveal">
+        <div class="code" data-file="tuning.py" data-lang="Python">
+          <div class="code-head"><span class="dots"><i></i><i></i><i></i></span><span class="fname">tuning.py</span><span class="lang">Python</span><button class="code-copy" type="button">复制</button></div>
+          <script type="text/plain" class="code-src">
+for params in ParameterGrid({"learning_rate": [0.03, 0.05, 0.1],
+                             "max_leaf_nodes": [15, 31],
+                             "max_iter": [400]}):
+    model = HistGradientBoostingClassifier(**base_params, **params)
+    model.fit(X_exp_enc, y_exp)
+    auc = roc_auc_score(y_val, model.predict_proba(X_val_enc)[:, 1])
+    print(params, f"AUC={auc:.4f}", "树数=", model.n_iter_)
+
+best = grid_df.iloc[0]   # lr=0.1, leaves=31
+# 再用最佳组合扫 max_iter ∈ {100, 250, 400, 700}，观察早停位置
+          </script>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band band--alt" id="final">
+    <div class="container">
+      <div class="sec-head reveal">
+        <div class="sec-kicker">07 / 交叉验证</div>
+        <h2 class="sec-title">全量数据上的 5 折交叉验证</h2>
+        <p class="sec-lead">
+          用调参选出的参数在全量数据上重新训练：5 折分层交叉验证，每折对验证集预测拼成 OOF，
+          对测试集预测 5 折平均。这样既得到干净的评估，也顺便集成了 5 个模型。
+        </p>
+      </div>
+
+      <div class="result-banner reveal">
+        <div class="left">
+          <span class="k">Out-of-fold ROC AUC</span>
+          <div class="big" data-count="0.967619" data-dec="6">0.967619</div>
+          <div class="sub">750,000 行 · 5 折分层交叉验证 · 每折 400 棵树 · 全部用满未早停</div>
+        </div>
+        <div class="right">
+          <div><b>0.967621</b><span>各折均值</span></div>
+          <div><b>± 0.000459</b><span>标准差</span></div>
+          <div><b>0.001263</b><span>极差 0.9671 – 0.9683</span></div>
+          <div><b>≈ 4 min</b><span>5 折合计</span></div>
+        </div>
+      </div>
+
+      <div class="grid g-7-5 mt-20">
+        <div class="card chart-card reveal">
+          <div class="chart-top">
+            <div>
+              <div class="card-title">每一折的验证 AUC</div>
+              <div class="card-sub">虚线为各折均值 0.967621 · 5 折分层交叉验证</div>
+            </div>
+            <span class="badge badge--mono">StratifiedKFold(5)</span>
+          </div>
+          <div class="chart-wrap" id="chart-folds"></div>
+        </div>
+
+        <div class="card reveal d1">
+          <div class="card-head">
+            <div class="card-title">逐折明细</div>
+            <span class="badge">60,000 / 40,000</span>
+          </div>
+          <div class="table-wrap" style="border:0;border-radius:10px">
+            <table class="tb" style="min-width:0">
+              <thead><tr><th>折</th><th class="num">AUC</th><th class="num">树数</th><th class="num">用时</th></tr></thead>
+              <tbody>
+                <tr><td class="strong">Fold 1</td><td class="num strong">0.968339</td><td class="num">400</td><td class="num">48 s</td></tr>
+                <tr><td class="strong">Fold 2</td><td class="num strong">0.967076</td><td class="num">400</td><td class="num">48 s</td></tr>
+                <tr><td class="strong">Fold 3</td><td class="num strong">0.967216</td><td class="num">400</td><td class="num">47 s</td></tr>
+                <tr><td class="strong">Fold 4</td><td class="num strong">0.967897</td><td class="num">400</td><td class="num">47 s</td></tr>
+                <tr><td class="strong">Fold 5</td><td class="num strong">0.967578</td><td class="num">400</td><td class="num">47 s</td></tr>
+                <tr style="background:#f8fbfd"><td class="strong" style="color:var(--brand)">OOF</td><td class="num strong" style="color:var(--brand)">0.967619</td><td class="num muted">—</td><td class="num muted">约 237 s</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="card-note mt-12" style="color:var(--muted-2)">每折验证集约 15 万行，训练集约 60 万行。5 折极差只有 0.0013，说明模型对数据划分不敏感。</p>
+        </div>
+      </div>
+
+      <div class="grid g2 mt-20">
+        <div class="card reveal">
+          <div class="card-title">早停行为</div>
+          <p class="card-note mt-8">
+            5 折都跑满了 400 棵。这符合预期——数据从 15 万变多到 60 万后，模型还能继续学；
+            而子样本曲线显示 250 棵以后验证 AUC 已经饱和，所以 400 作为上限足够，再往上加收益很小。
+          </p>
+        </div>
+        <div class="card reveal d1">
+          <div class="card-title">5 折平均的作用</div>
+          <p class="card-note mt-8">
+            5 个模型的训练子集不同，偏差略有差异，平均可以互相抵消，相当于一个轻量集成；
+            通常比单模型稳，代价只是多几次预测。
+          </p>
+        </div>
+      </div>
+
+      <div class="code-group reveal">
+        <div class="code" data-file="final_model.py" data-lang="Python">
+          <div class="code-head"><span class="dots"><i></i><i></i><i></i></span><span class="fname">final_model.py</span><span class="lang">Python</span><button class="code-copy" type="button">复制</button></div>
+          <script type="text/plain" class="code-src">
+FINAL_PARAMS = dict(learning_rate=0.1, max_leaf_nodes=31, max_iter=400)
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+for fold, (tr_idx, va_idx) in enumerate(skf.split(X_all_enc, y_all), start=1):
+    model = HistGradientBoostingClassifier(**base_params, **FINAL_PARAMS)
+    model.fit(X_all_enc.iloc[tr_idx], y_all[tr_idx])
+    oof_pred[va_idx] = model.predict_proba(X_all_enc.iloc[va_idx])[:, 1]
+    test_pred += model.predict_proba(X_test_enc)[:, 1] / 5
+    print(f"Fold {fold}: AUC={roc_auc_score(y_all[va_idx], oof_pred[va_idx]):.6f}")
+
+print("OOF AUC =", roc_auc_score(y_all, oof_pred))
+          </script>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="submission">
+    <div class="container">
+      <div class="sec-head reveal">
+        <div class="sec-kicker">08 / 提交校验</div>
+        <h2 class="sec-title">预测结果与格式校验</h2>
+        <p class="sec-lead">
+          写文件前用三行 assert 自检，避免“模型很好却败在格式上”。
+          下面是对 <span class="mono">submission.csv</span> 的独立复核结果。
+        </p>
+      </div>
+
+      <div class="grid g-7-5">
+        <div class="card chart-card reveal">
+          <div class="chart-top">
+            <div>
+              <div class="card-title">25 万条预测概率的分布</div>
+              <div class="card-sub">y 轴对数刻度：76.7% 的预测低于 0.1，高分位才是名单要用的部分</div>
+            </div>
+            <span class="badge badge--mono">LOG Y</span>
+          </div>
+          <div class="chart-wrap" id="chart-hist"></div>
+          <div class="hist-stats">
+            <div><b>0.00227</b><span>中位数</span></div>
+            <div><b>0.5443</b><span>P90</span></div>
+            <div><b>0.9420</b><span>P99</span></div>
+            <div><b>0.9968</b><span>最大值</span></div>
+          </div>
+        </div>
+
+        <div class="card reveal d1">
+          <div class="card-head">
+            <div class="card-title">提交前自检</div>
+            <span class="badge badge--good">全部通过</span>
+          </div>
+          <div class="stack" style="gap:0">
+            <div class="between" style="padding:11px 0;border-bottom:1px dashed var(--line-2)"><span class="card-note">行数 = sample_submission</span><span class="mono" style="font-size:12.5px;color:var(--good)">250,000 ✓</span></div>
+            <div class="between" style="padding:11px 0;border-bottom:1px dashed var(--line-2)"><span class="card-note">id 顺序逐行一致</span><span class="mono" style="font-size:12.5px;color:var(--good)">750000–999999 ✓</span></div>
+            <div class="between" style="padding:11px 0;border-bottom:1px dashed var(--line-2)"><span class="card-note">y 全部落在 [0, 1]</span><span class="mono" style="font-size:12.5px;color:var(--good)">1.39e-05 – 0.9968 ✓</span></div>
+            <div class="between" style="padding:11px 0;border-bottom:1px dashed var(--line-2)"><span class="card-note">缺失值</span><span class="mono" style="font-size:12.5px;color:var(--good)">0 ✓</span></div>
+            <div class="between" style="padding:11px 0"><span class="card-note">预测均值 ≈ 训练正例率</span><span class="mono" style="font-size:12.5px;color:var(--good)">0.120369 vs 0.120651 ✓</span></div>
+          </div>
+          <p class="card-note mt-12" style="color:var(--muted-2)">均值基本吻合，说明概率没有整体偏高或偏低，也侧面说明模型校准得不错。</p>
+        </div>
+      </div>
+
+      <div class="card mt-20 reveal">
+        <div class="threshold-panel">
+          <div class="thr-head">
+            <div>
+              <div class="card-title">阈值与名单规模的权衡</div>
+              <div class="card-sub">拖动阈值，看看这个名单的规模和期望效果（基于 25 万条预测概率）</div>
+            </div>
+            <div class="center"><span class="card-note" style="font-size:12px">阈值</span><span class="thr-value" id="thr-value">0.50</span></div>
+          </div>
+          <div class="thr-slider">
+            <input type="range" id="thr-range" min="0.05" max="0.95" step="0.01" value="0.50" aria-label="分类阈值">
+            <div class="thr-scale"><span>0.05</span><span>0.25</span><span>0.50</span><span>0.75</span><span>0.95</span></div>
+          </div>
+          <div class="thr-out">
+            <div><b id="thr-n">—</b><span>名单规模（人）</span></div>
+            <div class="hot"><b id="thr-rate">—</b><span>期望认购率</span></div>
+            <div><b id="thr-lift">—</b><span>相对整体提升</span></div>
+            <div><b id="thr-recall">—</b><span>期望覆盖正例</span></div>
+          </div>
+          <p class="card-note" style="color:var(--muted-2)">
+            “期望”指对模型概率求和后的估计（假设概率已校准），不是真实标签下的结果；覆盖率 = 名单内概率之和 ÷ 全部概率之和，近似召回率。
+            实际业务还要把外呼成本与客户体验算进去，阈值不是一个纯技术选择。
+          </p>
+        </div>
+      </div>
+
+      <div class="code-group reveal">
+        <div class="code" data-file="submission.py" data-lang="Python">
+          <div class="code-head"><span class="dots"><i></i><i></i><i></i></span><span class="fname">submission.py</span><span class="lang">Python</span><button class="code-copy" type="button">复制</button></div>
+          <script type="text/plain" class="code-src">
+submission = pd.DataFrame({"id": test["id"], "y": test_pred})
+
+# 三行自检：行数、id 顺序、概率范围
+assert len(submission) == len(sample_submission)
+assert (submission["id"].values == sample_submission["id"].values).all()
+assert submission["y"].between(0, 1).all()
+
+submission.to_csv("submission.csv", index=False)
+          </script>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band band--alt" id="insights">
+    <div class="container">
+      <div class="sec-head reveal">
+        <div class="sec-kicker">09 / 结果分析</div>
+        <h2 class="sec-title">分组校准、业务限制与改进</h2>
+        <p class="sec-lead">
+          5 折 AUC 在 0.9671–0.9683 之间，标准差 0.00046；测试集预测均值 0.1204，与训练正例率 0.1207 基本一致。
+          不过比分数更值得展开的，是下面两件事。
+        </p>
+      </div>
+
+      <div class="grid g2">
+        <div class="card chart-card reveal">
+          <div class="chart-top">
+            <div>
+              <div class="card-title">分组校准：按月份</div>
+              <div class="card-sub">实际认购率来自训练集；预测均值来自测试集 25 万条概率（测试集没有标签）</div>
+            </div>
+            <div class="legend">
+              <span><i style="background:#b9cbe6"></i>实际</span>
+              <span><i style="background:#3f68a5"></i>预测均值</span>
+            </div>
+          </div>
+          <div class="chart-wrap" id="chart-month"></div>
+        </div>
+
+        <div class="card chart-card reveal d1">
+          <div class="chart-top">
+            <div>
+              <div class="card-title">分组校准：按通话时长</div>
+              <div class="card-sub">9 个时长段的预测均值与实际认购率偏差都在 0.006 以内</div>
+            </div>
+            <div class="legend">
+              <span><i style="background:#b9cbe6"></i>实际</span>
+              <span><i style="background:#3f68a5"></i>预测均值</span>
+            </div>
+          </div>
+          <div class="chart-wrap" id="chart-duration"></div>
+        </div>
+      </div>
+
+      <div class="card mt-20 reveal">
+        <div class="sec-kicker" style="letter-spacing:.1em">图表解读</div>
+        <p class="card-note mt-12" style="font-size:14px;line-height:1.9;max-width:92ch">
+          把两端并排看：<b style="color:var(--ink-2)">12 个月份里，除了样本量很小的 12 月（695 行）和 9 月，预测均值与实际认购率的偏差都在 0.006 以内</b>；
+          5 月样本最多（76,009 行）认购率只有 7.1%，模型同样给出 7.1%。时长维度上，从 0–60 秒的 0.3% 到 900 秒以上的 69.7%，
+          模型几乎完整复现了这条上升曲线，连 241–300 秒到 301–420 秒之间的小幅回落也对得上。这说明模型学到的是各群体的真实差异，而不是某一两个群体的偶然结果。
+        </p>
+      </div>
+
+      <div class="callout callout--warm mt-20 reveal">
+        <div class="ic"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2.6 14 13H2L8 2.6Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 6.2v3.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="11.2" r=".85" fill="currentColor"/></svg></div>
+        <div>
+          <h4>duration 的事后信息问题</h4>
+          <p>
+            duration 与目标的相关性 0.52，是最强的单变量，但它只有<b>通话结束之后</b>才能拿到。
+            如果业务场景是“通话前筛选名单”，这个特征不可用，模型必须去掉它重新评估；
+            如果场景是“通话中实时提示坐席”，那它是合理的。比赛允许使用，所以保留了；
+            这层业务判断，比多 0.001 的 AUC 更重要。
+          </p>
+        </div>
+      </div>
+
+      <div class="grid g-5-7 mt-20">
+        <div class="card reveal">
+          <div class="card-title">稳定性</div>
+          <div class="stack mt-12">
+            <div class="between"><span class="card-note">5 折 AUC</span><span class="badge badge--mono">0.9671 – 0.9683</span></div>
+            <div class="between"><span class="card-note">标准差</span><span class="badge badge--mono">0.000459</span></div>
+            <div class="between"><span class="card-note">极差</span><span class="badge badge--mono">0.001263</span></div>
+            <div class="between"><span class="card-note">预测均值 / 正例率</span><span class="badge badge--mono">0.1204 / 0.1207</span></div>
+            <div class="between"><span class="card-note">全量 5 折早停</span><span class="badge badge--mono">400 棵全部用满</span></div>
+            <div class="between"><span class="card-note">提交格式</span><span class="badge badge--good">3 项 assert 通过</span></div>
+          </div>
+        </div>
+        <div class="card reveal d1">
+          <div class="card-title">局限与改进方向</div>
+          <div class="table-wrap mt-12" style="border:0;border-radius:10px">
+            <table class="tb" style="min-width:0">
+              <thead><tr><th>方向</th><th>具体做法</th><th>预期</th></tr></thead>
+              <tbody>
+                <tr><td class="strong">模型</td><td class="muted">加 LightGBM / XGBoost，用 Optuna 搜 50–100 组</td><td class="muted">千分之一量级</td></tr>
+                <tr><td class="strong">调参范围</td><td class="muted">min_samples_leaf、l2 仍固定，未进网格</td><td class="muted">约 +0.0005</td></tr>
+                <tr><td class="strong">数据</td><td class="muted">合并原始 UCI Bank Marketing</td><td class="muted">小样本类别更稳</td></tr>
+                <tr><td class="strong">特征</td><td class="muted">job × education 目标编码、历史联系频率</td><td class="muted">需严格防泄漏</td></tr>
+                <tr><td class="strong">集成</td><td class="muted">多模型加权融合 / stacking</td><td class="muted">稳定但复杂度上升</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid g3 mt-20">
+        <div class="card card--tint reveal">
+          <div class="mono" style="font-size:11px;color:var(--brand-2)">CONCLUSION 01</div>
+          <div class="card-title mt-8">模型选择优先于调参</div>
+          <p class="card-note mt-8">换模型 +0.0213，调参 +0.0022。先把大类选对，再在最优模型上细调，收益差一个数量级。</p>
+        </div>
+        <div class="card card--tint reveal d1">
+          <div class="mono" style="font-size:11px;color:var(--brand-2)">CONCLUSION 02</div>
+          <div class="card-title mt-8">特征工程的克制</div>
+          <p class="card-note mt-8">4 个手工特征的边际增益小于 0.0001。它们的价值是稳健与可解释，不是为了凑特征数量。</p>
+        </div>
+        <div class="card card--tint reveal d2">
+          <div class="mono" style="font-size:11px;color:var(--brand-2)">CONCLUSION 03</div>
+          <div class="card-title mt-8">评估流程的严谨性</div>
+          <p class="card-note mt-8">固定验证集、5 折 OOF、外层验证折不参与早停、提交前三行 assert——流程的可信度比分数更难做。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+    <div class="container">
+      <div class="fgrid">
+        <div>
+          <h5>关于这个页面</h5>
+          <p>按 <span class="fmono">s5e8_bank_marketing.ipynb</span> 的执行顺序整理的数据挖掘实践报告：数据探查、特征处理、算法对比、参数调优、全量 5 折与提交。</p>
+          <p style="margin-top:10px">页面为单文件静态 HTML，图表全部内联绘制，不依赖任何外部库或网络；代码块只保留关键逻辑，完整实现见 notebook。</p>
+        </div>
+        <div>
+          <h5>文件清单</h5>
+          <ul>
+            <li><span class="fmono">s5e8_bank_marketing.ipynb</span> · 主代码（含运行输出与图）</li>
+            <li><span class="fmono">submission.csv</span> · 250,000 行提交文件</li>
+            <li><span class="fmono">汇报讲解文档.md</span> · 配套讲解文档</li>
+            <li><span class="fmono">data/</span> · train / test / sample_submission</li>
+          </ul>
+        </div>
+        <div>
+          <h5>复现与运行环境</h5>
+          <ul>
+            <li>① 把三个 CSV 放进 <span class="fmono">data/</span></li>
+            <li>② 打开 notebook，Run All</li>
+            <li>③ 自动生成 <span class="fmono">submission.csv</span></li>
+            <li>Python 3.12.7 · pandas 2.2.2 · scikit-learn 1.5.1</li>
+            <li>16 核 CPU，无 GPU，约 6 分 30 秒</li>
+            <li>random_state = 42</li>
+          </ul>
+        </div>
+      </div>
+      <div class="fnote">
+        <span>页面中的指标均来自 notebook 运行输出与对原始 CSV 的独立复算；类别分布、预测分布与阈值模拟为页面补充计算。</span>
+        <span class="center" style="gap:14px">
+          <button class="btn-print" type="button" onclick="window.print()">打印 / 导出 PDF</button>
+          <a href="#top">回到顶部 ↑</a>
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <button class="to-top" id="to-top" type="button" aria-label="回到顶部">
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 12.5V3.5M4 7.5 8 3.5l4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+
+<script>
+/* =========================================================================
+   S5E8 report page — charts & interactions (no dependencies)
+   ========================================================================= */
+(function () {
+  'use strict';
+
+  var DATA = {"overview":{"train_rows":750000,"train_cols":18,"test_rows":250000,"test_cols":17,"pos_rate":0.120651,"pos_count":90488,"neg_count":659512,"missing":0,"num_features":7,"cat_features":9,"n_cat_levels":{"job":12,"marital":3,"education":4,"default":2,"housing":2,"loan":2,"contact":3,"month":12,"poutcome":4},"id_train_range":[0,749999],"id_test_range":[750000,999999]},"numeric_stats":{"age":{"count":750000.0,"mean":40.926,"std":10.099,"min":18.0,"25%":33.0,"50%":39.0,"75%":48.0,"max":95.0},"balance":{"count":750000.0,"mean":1204.067,"std":2836.097,"min":-8019.0,"25%":0.0,"50%":634.0,"75%":1390.0,"max":99717.0},"day":{"count":750000.0,"mean":16.117,"std":8.251,"min":1.0,"25%":9.0,"50%":17.0,"75%":21.0,"max":31.0},"duration":{"count":750000.0,"mean":256.229,"std":272.556,"min":1.0,"25%":91.0,"50%":133.0,"75%":361.0,"max":4918.0},"campaign":{"count":750000.0,"mean":2.577,"std":2.719,"min":1.0,"25%":1.0,"50%":2.0,"75%":3.0,"max":63.0},"pdays":{"count":750000.0,"mean":22.413,"std":77.32,"min":-1.0,"25%":-1.0,"50%":-1.0,"75%":-1.0,"max":871.0},"previous":{"count":750000.0,"mean":0.299,"std":1.336,"min":0.0,"25%":0.0,"50%":0.0,"75%":0.0,"max":200.0}},"categorical":{"job":{"labels":["management","blue-collar","technician","admin.","services","retired","self-employed","entrepreneur","unemployed","housemaid","student","unknown"],"counts":[175541,170498,138107,81492,64209,35185,19020,17718,17634,15912,11767,2917],"rates":[0.15039,0.06744,0.11832,0.11645,0.08271,0.24624,0.12944,0.08139,0.17982,0.08465,0.34078,0.12067]},"marital":{"labels":["married","single","divorced"],"counts":[480759,194834,74407],"rates":[0.10187,0.17045,0.11158]},"education":{"labels":["secondary","tertiary","primary","unknown"],"counts":[401683,227508,99510,21299],"rates":[0.10549,0.16265,0.0831,0.13339]},"default":{"labels":["no","yes"],"counts":[737151,12849],"rates":[0.12195,0.04631]},"housing":{"labels":["yes","no"],"counts":[411288,338712],"rates":[0.07525,0.17578]},"loan":{"labels":["no","yes"],"counts":[645023,104977],"rates":[0.13138,0.05474]},"contact":{"labels":["cellular","unknown","telephone"],"counts":[486655,231627,31718],"rates":[0.15658,0.04295,0.1368]},"month":{"labels":["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"],"counts":[18937,37611,5802,41319,228411,93670,110647,128859,7409,9204,66062,2069],"rates":[0.12415,0.2068,0.57135,0.23565,0.07135,0.10373,0.09085,0.11216,0.53476,0.49,0.10981,0.51329]},"poutcome":{"labels":["unknown","failure","success","other"],"counts":[672450,45115,17691,14744],"rates":[0.1019,0.13279,0.764,0.16685]}},"duration_bins":{"labels":["0-60","61-120","121-180","181-240","241-300","301-420","421-600","601-900","900+"],"counts":[70539,245052,168744,50396,18577,20904,82816,65628,27344],"rates":[0.00298,0.00527,0.03116,0.14791,0.31921,0.249,0.23294,0.40932,0.6943]},"pdays_groups":{"labels":["从未联系 (pdays=-1)","曾被联系 (pdays>=0)"],"counts":[672434,77566],"rates":[0.1019,0.28318]},"correlation":{"pearson":{"age":0.0095,"balance":0.1225,"day":-0.0496,"duration":0.5193,"campaign":-0.0758,"pdays":0.0893,"previous":0.1196},"spearman":{"age":-0.0232,"balance":0.1976,"day":-0.0509,"duration":0.4395,"campaign":-0.0926,"pdays":0.16,"previous":0.1708}},"age_bins":{"labels":["15-19","20-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79","80-84","85-89","90-94"],"counts":[338,9296,64791,169528,141876,102833,95676,76663,65430,14641,3144,3301,1496,823,133,28],"rates":[0.31953,0.27313,0.19325,0.11623,0.10531,0.08983,0.09354,0.08557,0.10431,0.30401,0.52385,0.52742,0.51136,0.49696,0.48872,0.78571]},"balance_negative_share":0.13953,"month_order":["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"],"submission":{"rows":250000,"cols":["id","y"],"id_match":true,"mean":0.120369,"min":1.386082150313378e-05,"max":0.9967927721794404,"median":0.002269,"p90":0.544328,"p99":0.942002,"share_above_05":0.108428,"share_above_02":0.180588},"pred_hist":{"labels":["0.000","0.025","0.050","0.075","0.100","0.125","0.150","0.175","0.200","0.225","0.250","0.275","0.300","0.325","0.350","0.375","0.400","0.425","0.450","0.475","0.500","0.525","0.550","0.575","0.600","0.625","0.650","0.675","0.700","0.725","0.750","0.775","0.800","0.825","0.850","0.875","0.900","0.925","0.950","0.975"],"counts":[169597,10245,6885,5015,4074,3493,2996,2548,2226,2015,1807,1586,1495,1375,1375,1303,1258,1251,1164,1185,1191,1197,1183,1150,1165,1279,1289,1341,1327,1430,1485,1536,1587,1685,1669,1633,1504,1342,1171,943],"edges":[0.0,0.025,0.05,0.075,0.1,0.125,0.15,0.175,0.2,0.225,0.25,0.275,0.3,0.325,0.35,0.375,0.4,0.425,0.45,0.475,0.5,0.525,0.55,0.575,0.6,0.625,0.65,0.675,0.7,0.725,0.75,0.775,0.8,0.825,0.85,0.875,0.9,0.925,0.95,0.975,1.0]},"experiments":[{"model":"Logistic Regression","train_auc":0.9445,"valid_auc":0.9449,"seconds":1.4},{"model":"Decision Tree","train_auc":0.958,"valid_auc":0.9506,"seconds":0.7},{"model":"Random Forest","train_auc":0.972,"valid_auc":0.9622,"seconds":31.9},{"model":"HistGradientBoosting","train_auc":0.9737,"valid_auc":0.9662,"seconds":14.1}],"grid":[{"lr":0.03,"leaves":15,"auc":0.9641,"trees":400,"sec":11.49},{"lr":0.03,"leaves":31,"auc":0.9657,"trees":400,"sec":13.14},{"lr":0.05,"leaves":15,"auc":0.9653,"trees":400,"sec":11.62},{"lr":0.05,"leaves":31,"auc":0.9662,"trees":400,"sec":13.46},{"lr":0.1,"leaves":15,"auc":0.9662,"trees":400,"sec":11.13},{"lr":0.1,"leaves":31,"auc":0.9663,"trees":288,"sec":9.18}],"sweep":[{"max_iter":100,"trees":100,"auc":0.9654,"sec":3.38},{"max_iter":250,"trees":250,"auc":0.9663,"sec":8.02},{"max_iter":400,"trees":288,"auc":0.9663,"sec":9.01},{"max_iter":700,"trees":288,"auc":0.9663,"sec":9.49}],"folds":[{"fold":1,"auc":0.968339,"trees":400,"sec":48},{"fold":2,"auc":0.967076,"trees":400,"sec":48},{"fold":3,"auc":0.967216,"trees":400,"sec":47},{"fold":4,"auc":0.967897,"trees":400,"sec":47},{"fold":5,"auc":0.967578,"trees":400,"sec":47}],"final":{"oof_auc":0.967619,"mean":0.967621,"std":0.000459},"encodings":{"job":{"admin.":0,"blue-collar":1,"entrepreneur":2,"housemaid":3,"management":4,"retired":5,"self-employed":6,"services":7,"student":8,"technician":9,"unemployed":10,"unknown":11},"marital":{"divorced":0,"married":1,"single":2},"education":{"primary":0,"secondary":1,"tertiary":2,"unknown":3},"default":{"no":0,"yes":1},"housing":{"no":0,"yes":1},"loan":{"no":0,"yes":1},"contact":{"cellular":0,"telephone":1,"unknown":2},"month":{"apr":0,"aug":1,"dec":2,"feb":3,"jan":4,"jul":5,"jun":6,"mar":7,"may":8,"nov":9,"oct":10,"sep":11},"poutcome":{"failure":0,"other":1,"success":2,"unknown":3}},"duration_hist_raw":{"edges":[1.0,1.5,2.3,3.6,5.5,8.4,12.9,19.7,30.2,46.2,70.7,108.3,165.7,253.7,388.4,594.6,910.3,1393.6,2133.4,3266.0,5000.0],"counts":[6,0,1,3198,14070,9214,6456,6032,9336,44467,171348,193623,82953,24975,89861,68488,22542,3334,66,30]},"duration_hist_log":{"edges":[0.0,0.426,0.852,1.278,1.703,2.129,2.555,2.981,3.407,3.833,4.259,4.685,5.11,5.536,5.962,6.388,6.814,7.24,7.666,8.092,8.517],"counts":[0,6,0,466,11879,12548,7481,6302,9338,41457,169230,198019,83443,25391,89891,68462,22632,3359,66,30]},"campaign_hist":{"labels":["1","2","3","4","5","6","7","8","9","10","11+"],"counts":[304481,209834,88683,60974,25648,19694,10360,7777,3993,3511,15045]},"campaign_over_10":15045,"duration_quantiles":{"0.5":133.0,"0.75":361.0,"0.9":645.0,"0.95":829.0,"0.99":1206.0},"test_by_month":{"labels":["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"],"pred":[0.12613,0.20597,0.57039,0.23466,0.07137,0.10282,0.08985,0.1108,0.54594,0.49242,0.10984,0.49655],"actual":[0.12415,0.2068,0.57135,0.23565,0.07135,0.10373,0.09085,0.11216,0.53476,0.49,0.10981,0.51329],"counts":[6441,12516,1944,13878,76009,31195,36828,42874,2429,3154,22037,695]},"test_by_duration":{"labels":["0-60","61-120","121-180","181-240","241-300","301-420","421-600","601-900","900+"],"pred":[0.00272,0.00527,0.03057,0.14201,0.31927,0.2506,0.23555,0.41121,0.69677],"actual":[0.00298,0.00527,0.03116,0.14791,0.31921,0.249,0.23294,0.40932,0.6943]},"threshold_curve":{"edges":[0.0,0.025,0.05,0.075,0.1,0.125,0.15,0.175,0.2,0.225,0.25,0.275,0.3,0.325,0.35,0.375,0.4,0.425,0.45,0.475,0.5,0.525,0.55,0.575,0.6,0.625,0.65,0.675,0.7,0.725,0.75,0.775,0.8,0.825,0.85,0.875,0.9,0.925,0.95,0.975,1.0],"counts":[169597,10245,6885,5015,4074,3493,2996,2548,2226,2015,1807,1586,1495,1375,1375,1303,1258,1251,1164,1185,1191,1197,1183,1150,1165,1279,1289,1341,1327,1430,1485,1536,1587,1685,1669,1633,1504,1342,1171,943],"sums":[445.54,372.74,426.81,436.0,456.66,479.26,485.63,477.18,472.49,478.0,474.33,455.49,467.27,463.7,498.38,504.39,518.76,547.34,538.46,577.58,610.52,643.73,665.42,675.32,713.78,815.47,854.44,921.89,945.65,1054.31,1132.11,1209.83,1289.28,1411.31,1439.55,1449.34,1371.7,1257.37,1127.43,927.88]},"expected_positives":30092.3,"percentiles":{"0.5":0.00227,"0.75":0.07837,"0.9":0.54433,"0.95":0.78429,"0.99":0.942},"all_negative_accuracy":0.87935};
+
+  /* ---------- tiny helpers ---------- */
+  var NS = 'http://www.w3.org/2000/svg';
+  var $ = function (s, c) { return (c || document).querySelector(s); };
+  var $$ = function (s, c) { return Array.prototype.slice.call((c || document).querySelectorAll(s)); };
+  var clamp = function (v, a, b) { return Math.min(b, Math.max(a, v)); };
+  var fmt = function (n, d) {
+    d = d || 0;
+    return Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  };
+  var pct = function (v, d) { return (v * 100).toFixed(d == null ? 1 : d) + '%'; };
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var SNAP = /[?&]snap=1\b/.test(location.search);
+
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function svgEl(w, h, label) {
+    var s = document.createElementNS(NS, 'svg');
+    s.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    s.setAttribute('class', 'chart');
+    s.setAttribute('role', 'img');
+    if (label) s.setAttribute('aria-label', label);
+    return s;
+  }
+  function add(tag, attrs, parent) {
+    var n = document.createElementNS(NS, tag);
+    if (attrs) {
+      for (var k in attrs) {
+        if (k === 'text') n.textContent = attrs[k];
+        else n.setAttribute(k, attrs[k]);
+      }
+    }
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+  function txt(parent, x, y, str, o) {
+    o = o || {};
+    var t = add('text', {
+      x: x, y: y,
+      'text-anchor': o.anchor || 'start',
+      'class': o.cls || 'axis-text'
+    }, parent);
+    if (o.size) t.setAttribute('font-size', o.size);
+    if (o.fill) t.setAttribute('fill', o.fill);
+    if (o.weight) t.setAttribute('font-weight', o.weight);
+    t.textContent = str;
+    return t;
+  }
+  function lerpColor(a, b, t) {
+    var pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+    var ar = pa >> 16 & 255, ag = pa >> 8 & 255, ab = pa & 255;
+    var br = pb >> 16 & 255, bg = pb >> 8 & 255, bb = pb & 255;
+    return 'rgb(' + Math.round(ar + (br - ar) * t) + ',' + Math.round(ag + (bg - ag) * t) + ',' + Math.round(ab + (bb - ab) * t) + ')';
+  }
+
+  /* ---------- tooltip ---------- */
+  var tip = document.createElement('div');
+  tip.className = 'tooltip';
+  tip.setAttribute('role', 'status');
+  document.body.appendChild(tip);
+  var tipHTML = '';
+
+  function moveTip(e) {
+    var pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+    var x = e.clientX + pad, y = e.clientY + pad;
+    if (x + w > window.innerWidth - 8) x = e.clientX - w - pad;
+    if (y + h > window.innerHeight - 8) y = e.clientY - h - pad;
+    tip.style.left = Math.max(8, x) + 'px';
+    tip.style.top = Math.max(8, y) + 'px';
+  }
+  function bindTip(node, html) {
+    node.addEventListener('mouseenter', function (e) {
+      tipHTML = html;
+      tip.innerHTML = html;
+      tip.classList.add('on');
+      moveTip(e);
+    });
+    node.addEventListener('mousemove', moveTip);
+    node.addEventListener('mouseleave', function () { tip.classList.remove('on'); });
+    node.addEventListener('focus', function () {
+      tip.innerHTML = html; tip.classList.add('on');
+      var r = node.getBoundingClientRect();
+      moveTip({ clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 });
+    });
+    node.addEventListener('blur', function () { tip.classList.remove('on'); });
+    if (node.setAttribute) node.setAttribute('tabindex', '-1');
+  }
+
+  /* ---------- visibility (scroll driven, deterministic) ---------- */
+  var revealEls = $$('.reveal');
+  var onceItems = [];
+  var chartRoots = [];
+  if (SNAP) revealEls.forEach(function (el) { el.classList.add('in'); });
+
+  function armNow(root) {
+    root.querySelectorAll('.grow,.growx').forEach(function (n, i) {
+      n.style.transitionDelay = Math.min(i * 30, 420) + 'ms';
+      n.classList.add('on');
+    });
+    root.querySelectorAll('.fade').forEach(function (n) { n.classList.add('on'); });
+  }
+  function onVisibleOnce(el, fn) {
+    if (!el) return;
+    if (SNAP) { fn(); return; }
+    onceItems.push({ el: el, fn: fn });
+  }
+  function armChart(root) {
+    if (!root) return;
+    if (SNAP) { armNow(root); return; }
+    chartRoots.push(root);
+  }
+  function inView(el) {
+    var r = el.getBoundingClientRect();
+    var vh = window.innerHeight || document.documentElement.clientHeight || 0;
+    return r.top < vh * 0.92 && r.bottom > 0;
+  }
+  function checkVisible() {
+    revealEls.forEach(function (el) {
+      if (!el.classList.contains('in') && inView(el)) el.classList.add('in');
+    });
+    for (var i = onceItems.length - 1; i >= 0; i--) {
+      if (inView(onceItems[i].el)) {
+        var fn = onceItems[i].fn;
+        onceItems.splice(i, 1);
+        fn();
+      }
+    }
+    for (var j = chartRoots.length - 1; j >= 0; j--) {
+      if (inView(chartRoots[j])) {
+        armNow(chartRoots[j]);
+        chartRoots.splice(j, 1);
+      }
+    }
+  }
+
+  /* ---------- count up ---------- */
+  function countUp(el) {
+    var target = parseFloat(el.getAttribute('data-count'));
+    var dec = parseInt(el.getAttribute('data-dec') || '0', 10);
+    var suffix = el.getAttribute('data-suffix') || '';
+    var render = function (v) {
+      var s = dec > 0 ? v.toFixed(dec) : fmt(Math.round(v), 0);
+      el.textContent = s + suffix;
+    };
+    if (reduceMotion || SNAP) { render(target); return; }
+    var start = performance.now(), dur = 1150;
+    function tick(t) {
+      var p = clamp((t - start) / dur, 0, 1);
+      var e = 1 - Math.pow(1 - p, 3);
+      render(target * e);
+      if (p < 1) requestAnimationFrame(tick);
+      else render(target);
+    }
+    requestAnimationFrame(tick);
+  }
+  $$('[data-count]').forEach(function (el) { onVisibleOnce(el, function () { countUp(el); }); });
+
+  /* ---------- width fills ---------- */
+  $$('[data-w]').forEach(function (el) {
+    onVisibleOnce(el, function () { el.style.width = el.getAttribute('data-w') + '%'; });
+  });
+  $$('[data-fill]').forEach(function (el) {
+    onVisibleOnce(el, function () { el.style.width = el.getAttribute('data-fill') + '%'; });
+  });
+
+  /* ---------- hero spark ---------- */
+  (function () {
+    var host = $('#hero-spark');
+    if (!host) return;
+    var folds = DATA.folds;
+    var lo = 0.9668, hi = 0.9686;
+    folds.forEach(function (f, i) {
+      var b = document.createElement('i');
+      var h = clamp((f.auc - lo) / (hi - lo), 0.12, 1);
+      b.style.height = (h * 100).toFixed(1) + '%';
+      b.title = 'Fold ' + (i + 1) + ' · ' + f.auc.toFixed(6);
+      host.appendChild(b);
+    });
+    setTimeout(function () {
+      $$('i', host).forEach(function (b, i) {
+        if (SNAP) { b.classList.add('on'); return; }
+        setTimeout(function () { b.classList.add('on'); }, i * 80);
+      });
+    }, SNAP ? 0 : 500);
+  })();
+
+  /* =======================================================================
+     1) model comparison
+     ======================================================================= */
+  (function () {
+    var root = $('#chart-models');
+    if (!root) return;
+    var W = 760, H = 300, L = 176, R = 112, T = 24, B = 44;
+    var lo = 0.94, hi = 0.9755;
+    var rows = DATA.experiments.slice().sort(function (a, b) { return b.valid_auc - a.valid_auc; });
+    var s = svgEl(W, H, '四个模型的训练与验证 AUC 对比');
+    var x = function (v) { return L + (v - lo) / (hi - lo) * (W - L - R); };
+    var plotH = H - T - B, rowH = plotH / rows.length;
+
+    for (var t = 0.94; t <= 0.9751; t += 0.005) {
+      add('line', { x1: x(t), x2: x(t), y1: T, y2: H - B, 'class': 'grid-line' }, s);
+      txt(s, x(t), H - B + 20, t.toFixed(3), { anchor: 'middle', size: 10.5 });
+    }
+    txt(s, W - 8, 14, '用时', { anchor: 'end', size: 10 });
+
+    rows.forEach(function (r, i) {
+      var yc = T + rowH * (i + 0.5);
+      var bh = 14, gap = 5;
+      var yTrain = yc - bh - gap / 2, yValid = yc + gap / 2;
+      txt(s, L - 14, yc + 4, r.model, { anchor: 'end', cls: 'cat-strong' });
+
+      add('rect', {
+        x: x(lo), y: yTrain, width: Math.max(1, x(r.train_auc) - x(lo)), height: bh,
+        rx: 3, 'class': 'bar-train growx'
+      }, s);
+      add('rect', {
+        x: x(lo), y: yValid, width: Math.max(1, x(r.valid_auc) - x(lo)), height: bh,
+        rx: 3, 'class': 'bar-valid growx'
+      }, s);
+
+      txt(s, x(r.train_auc) + 6, yTrain + 11, r.train_auc.toFixed(4), { cls: 'val-sm' });
+      txt(s, x(r.valid_auc) + 6, yValid + 11, r.valid_auc.toFixed(4), { cls: 'val' });
+      txt(s, W - 8, yc + 4, r.seconds.toFixed(1) + ' s', { anchor: 'end', size: 10.5 });
+
+      var hit = add('rect', {
+        x: L, y: T + rowH * i, width: W - L - R + 6, height: rowH, 'class': 'hit'
+      }, s);
+      bindTip(hit,
+        '<div class="t-head">' + esc(r.model) + '</div>' +
+        '<div class="t-row"><span>训练 AUC</span><b>' + r.train_auc.toFixed(4) + '</b></div>' +
+        '<div class="t-row"><span>验证 AUC</span><b>' + r.valid_auc.toFixed(4) + '</b></div>' +
+        '<div class="t-row"><span>训练−验证</span><b>' + (r.train_auc - r.valid_auc).toFixed(4) + '</b></div>' +
+        '<div class="t-row"><span>用时</span><b>' + r.seconds.toFixed(1) + ' s</b></div>');
+    });
+
+    txt(s, (L + W - R) / 2, H - 4, 'AUC（横轴从 0.94 开始）', { anchor: 'middle', size: 10.5 });
+    root.appendChild(s);
+    armChart(root);
+  })();
+
+  /* =======================================================================
+     2) grid search
+     ======================================================================= */
+  (function () {
+    var root = $('#chart-grid');
+    if (!root) return;
+    var W = 720, H = 320, L = 62, R = 22, T = 34, B = 54;
+    var lo = 0.9635, hi = 0.9667;
+    var lrs = [0.03, 0.05, 0.1];
+    var leaves = [15, 31];
+    var s = svgEl(W, H, '网格搜索：学习率与叶子数的验证 AUC');
+    var y = function (v) { return T + (hi - v) / (hi - lo) * (H - T - B); };
+    var gw = (W - L - R) / lrs.length;
+
+    for (var v = 0.9640; v <= 0.96651; v += 0.0005) {
+      add('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), 'class': 'grid-line' }, s);
+      txt(s, L - 12, y(v) + 4, v.toFixed(4), { anchor: 'end', size: 10.5 });
+    }
+
+    var bestRow = DATA.grid.reduce(function (a, b) { return b.auc > a.auc ? b : a; });
+    lrs.forEach(function (lr, gi) {
+      var cx = L + gw * (gi + 0.5);
+      var bw = 40, gap = 10;
+
+      leaves.forEach(function (lv, bi) {
+        var row = DATA.grid.filter(function (d) { return d.lr === lr && d.leaves === lv; })[0];
+        if (!row) return;
+        var bx = cx - (bw * leaves.length + gap * (leaves.length - 1)) / 2 + bi * (bw + gap);
+        var by = y(row.auc), bh = H - B - by;
+        add('rect', {
+          x: bx, y: by, width: bw, height: Math.max(1, bh), rx: 4,
+          'class': (bi === 0 ? 'bar-a' : 'bar-b') + ' grow'
+        }, s);
+        txt(s, bx + bw / 2, by - 8, row.auc.toFixed(4), { anchor: 'middle', cls: 'val-sm' });
+        var hit = add('rect', { x: bx - 4, y: T, width: bw + 8, height: H - B - T, 'class': 'hit' }, s);
+        bindTip(hit,
+          '<div class="t-head">learning_rate = ' + lr.toFixed(2) + '</div>' +
+          '<div class="t-row"><span>max_leaf_nodes</span><b>' + lv + '</b></div>' +
+          '<div class="t-row"><span>验证 AUC</span><b>' + row.auc.toFixed(4) + '</b></div>' +
+          '<div class="t-row"><span>实际树数</span><b>' + row.trees + '</b></div>' +
+          '<div class="t-row"><span>用时</span><b>' + row.sec.toFixed(1) + ' s</b></div>');
+      });
+
+      txt(s, cx, H - 26, lr.toFixed(2), { anchor: 'middle', cls: 'cat' });
+    });
+
+    txt(s, (L + W - R) / 2, H - 6, 'learning_rate', { anchor: 'middle', size: 10.5 });
+    root.appendChild(s);
+    armChart(root);
+  })();
+
+  /* =======================================================================
+     3) tree-count sweep
+     ======================================================================= */
+  (function () {
+    var root = $('#chart-sweep');
+    if (!root) return;
+    var W = 720, H = 300, L = 66, R = 34, T = 34, B = 58;
+    var lo = 0.9648, hi = 0.9666;
+    var s = svgEl(W, H, '树的数量与验证 AUC');
+    var y = function (v) { return T + (hi - v) / (hi - lo) * (H - T - B); };
+    var n = DATA.sweep.length;
+    var xAt = function (i) { return L + (W - L - R) * (i + 0.5) / n; };
+
+    for (var v = 0.9650; v <= 0.96651; v += 0.0005) {
+      add('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), 'class': 'grid-line' }, s);
+      txt(s, L - 12, y(v) + 4, v.toFixed(4), { anchor: 'end', size: 10.5 });
+    }
+
+    var pts = DATA.sweep.map(function (d, i) { return [xAt(i), y(d.auc)]; });
+
+    var pts = DATA.sweep.map(function (d, i) { return [xAt(i), y(d.auc)]; });
+    var dpath = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0] + ' ' + p[1]; }).join(' ');
+    add('path', { d: dpath, 'class': 'line-main fade' }, s);
+
+    DATA.sweep.forEach(function (d, i) {
+      var cx = xAt(i), cy = y(d.auc);
+      txt(s, cx, cy - 14, d.auc.toFixed(4), { anchor: 'middle', cls: 'val-sm' });
+      add('circle', { cx: cx, cy: cy, r: 4.6, 'class': 'pt fade' }, s);
+      txt(s, cx, H - 28, String(d.max_iter), { anchor: 'middle', cls: 'cat' });
+      var hit = add('circle', { cx: cx, cy: cy, r: 20, 'class': 'hit' }, s);
+      bindTip(hit,
+        '<div class="t-head">max_iter = ' + d.max_iter + '</div>' +
+        '<div class="t-row"><span>实际树数</span><b>' + d.trees + '</b></div>' +
+        '<div class="t-row"><span>验证 AUC</span><b>' + d.auc.toFixed(4) + '</b></div>' +
+        '<div class="t-row"><span>用时</span><b>' + d.sec.toFixed(2) + ' s</b></div>');
+    });
+
+    txt(s, (L + W - R) / 2, H - 6, 'max_iter（上限）', { anchor: 'middle', size: 10.5 });
+    root.appendChild(s);
+    armChart(root);
+  })();
+
+  /* =======================================================================
+     4) folds
+     ======================================================================= */
+  (function () {
+    var root = $('#chart-folds');
+    if (!root) return;
+    var W = 720, H = 300, L = 70, R = 30, T = 32, B = 58;
+    var lo = 0.9665, hi = 0.9686;
+    var s = svgEl(W, H, '5 折验证 AUC');
+    var y = function (v) { return T + (hi - v) / (hi - lo) * (H - T - B); };
+    var n = DATA.folds.length;
+    var bw = 56;
+    var mean = DATA.final.mean, std = DATA.final.std;
+
+    for (var v = 0.9670; v <= 0.96851; v += 0.0005) {
+      add('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), 'class': 'grid-line' }, s);
+      txt(s, L - 12, y(v) + 4, v.toFixed(4), { anchor: 'end', size: 10.5 });
+    }
+
+    DATA.folds.forEach(function (d, i) {
+      var cx = L + (W - L - R) * (i + 0.5) / n;
+      var by = y(d.auc), bh = H - B - by;
+      add('rect', {
+        x: cx - bw / 2, y: by, width: bw, height: Math.max(1, bh), rx: 5,
+        'class': 'bar-valid grow'
+      }, s);
+      txt(s, cx, by - 10, d.auc.toFixed(5), { anchor: 'middle', cls: 'val-sm' });
+      txt(s, cx, H - 30, 'Fold ' + d.fold, { anchor: 'middle', cls: 'cat' });
+      var hit = add('rect', { x: cx - bw / 2 - 6, y: T, width: bw + 12, height: H - B - T, 'class': 'hit' }, s);
+      bindTip(hit,
+        '<div class="t-head">Fold ' + d.fold + '</div>' +
+        '<div class="t-row"><span>验证 AUC</span><b>' + d.auc.toFixed(6) + '</b></div>' +
+        '<div class="t-row"><span>树数</span><b>' + d.trees + '</b></div>' +
+        '<div class="t-row"><span>用时</span><b>' + d.sec + ' s</b></div>');
+    });
+
+    add('line', { x1: L, x2: W - R, y1: y(mean), y2: y(mean), 'class': 'mean-line' }, s);
+    root.appendChild(s);
+    armChart(root);
+  })();
+
+  /* =======================================================================
+     5) prediction histogram (log y)
+     ======================================================================= */
+  (function () {
+    var root = $('#chart-hist');
+    if (!root) return;
+    var W = 720, H = 300, L = 58, R = 20, T = 30, B = 50;
+    var edges = DATA.threshold_curve.edges, counts = DATA.threshold_curve.counts;
+    var s = svgEl(W, H, '预测概率分布直方图');
+    var pw = W - L - R, ph = H - T - B;
+    var maxC = Math.max.apply(null, counts);
+    var logMin = 2, logMax = Math.ceil(Math.log10(maxC + 1) * 100) / 100;
+    var y = function (c) {
+      var t = (Math.log10(c + 1) - logMin) / (logMax - logMin);
+      return T + ph * (1 - clamp(t, 0, 1));
+    };
+
+    [10, 100, 1000, 10000, 100000].forEach(function (tv) {
+      if (tv < Math.pow(10, logMin) || tv > Math.pow(10, logMax)) return;
+      add('line', { x1: L, x2: W - R, y1: y(tv), y2: y(tv), 'class': 'grid-line' }, s);
+      txt(s, L - 10, y(tv) + 4, tv >= 10000 ? (tv / 10000) + '万' : String(tv), { anchor: 'end', size: 10 });
+    });
+
+    var bw = pw / counts.length - 1.2;
+    counts.forEach(function (c, i) {
+      var bx = L + i * (pw / counts.length);
+      var by = y(c), bh = H - B - by;
+      var col = lerpColor('#dce8f6', '#2e5a9c', Math.pow(i / (counts.length - 1), 0.6));
+      add('rect', {
+        x: bx, y: by, width: bw, height: Math.max(1, bh), rx: 2.5,
+        fill: col, 'class': 'grow'
+      }, s);
+      var hit = add('rect', {
+        x: bx - 1, y: T, width: bw + 2, height: ph, 'class': 'hit'
+      }, s);
+      bindTip(hit,
+        '<div class="t-head">' + edges[i].toFixed(3) + ' – ' + edges[i + 1].toFixed(3) + '</div>' +
+        '<div class="t-row"><span>样本数</span><b>' + fmt(c) + '</b></div>' +
+        '<div class="t-row"><span>占比</span><b>' + (c / 250000 * 100).toFixed(2) + '%</b></div>');
+    });
+
+    for (var t = 0; t <= 1.0001; t += 0.2) {
+      txt(s, L + t * pw, H - B + 20, Math.round(t * 100) + '%', { anchor: 'middle', size: 10.5 });
+    }
+    var x5 = L + 0.5 * pw;
+    add('line', { x1: x5, x2: x5, y1: T, y2: H - B, 'class': 'note-line' }, s);
+    txt(s, x5 + 6, T + 10, '阈值 0.5', { cls: 'note-text', size: 10 });
+    txt(s, (L + W - R) / 2, H - 4, '模型给出的认购概率 y', { anchor: 'middle', size: 10.5 });
+    root.appendChild(s);
+    armChart(root);
+  })();
+
+  /* =======================================================================
+     6) calibration by month
+     ======================================================================= */
+  (function () {
+    var root = $('#chart-month');
+    if (!root) return;
+    var W = 560, H = 312, L = 46, R = 16, T = 28, B = 64;
+    var d = DATA.test_by_month;
+    var hi = 0.62;
+    var s = svgEl(W, H, '按月份的实际认购率与预测均值');
+    var pw = W - L - R, ph = H - T - B;
+    var y = function (v) { return T + (hi - v) / hi * ph; };
+
+    [0, 0.2, 0.4, 0.6].forEach(function (v) {
+      add('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), 'class': 'grid-line' }, s);
+      txt(s, L - 10, y(v) + 4, Math.round(v * 100) + '%', { anchor: 'end', size: 10 });
+    });
+
+    var n = d.labels.length, gw = pw / n, bw = 13, gap = 3;
+    d.labels.forEach(function (m, i) {
+      var cx = L + gw * (i + 0.5);
+      var x0 = cx - (bw * 2 + gap) / 2;
+      [d.actual[i], d.pred[i]].forEach(function (v, j) {
+        var by = y(v);
+        add('rect', {
+          x: x0 + j * (bw + gap), y: by, width: bw, height: Math.max(1, H - B - by), rx: 2.5,
+          'class': (j === 0 ? 'bar-train' : 'bar-valid') + ' grow'
+        }, s);
+      });
+      txt(s, cx, H - 36, m, { anchor: 'middle', size: 10.5 });
+      var hit = add('rect', { x: L + gw * i, y: T, width: gw, height: ph, 'class': 'hit' }, s);
+      bindTip(hit,
+        '<div class="t-head">' + m + '</div>' +
+        '<div class="t-row"><span>实际（训练）</span><b>' + (d.actual[i] * 100).toFixed(2) + '%</b></div>' +
+        '<div class="t-row"><span>预测均值（测试）</span><b>' + (d.pred[i] * 100).toFixed(2) + '%</b></div>' +
+        '<div class="t-row"><span>测试样本</span><b>' + fmt(d.counts[i]) + '</b></div>');
+    });
+
+    txt(s, (L + W - R) / 2, H - 12, '最后一次联系月份', { anchor: 'middle', size: 10.5 });
+
+    root.appendChild(s);
+    armChart(root);
+  })();
+
+  /* =======================================================================
+     7) calibration by duration
+     ======================================================================= */
+  (function () {
+    var root = $('#chart-duration');
+    if (!root) return;
+    var W = 560, H = 312, L = 46, R = 16, T = 28, B = 68;
+    var d = DATA.test_by_duration;
+    var hi = 0.75;
+    var s = svgEl(W, H, '按通话时长的实际认购率与预测均值');
+    var pw = W - L - R, ph = H - T - B;
+    var y = function (v) { return T + (hi - v) / hi * ph; };
+
+    [0, 0.25, 0.5, 0.75].forEach(function (v) {
+      add('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), 'class': 'grid-line' }, s);
+      txt(s, L - 10, y(v) + 4, Math.round(v * 100) + '%', { anchor: 'end', size: 10 });
+    });
+
+    var n = d.labels.length, gw = pw / n, bw = 16, gap = 3;
+    d.labels.forEach(function (lb, i) {
+      var cx = L + gw * (i + 0.5);
+      var x0 = cx - (bw * 2 + gap) / 2;
+      [d.actual[i], d.pred[i]].forEach(function (v, j) {
+        var by = y(v);
+        add('rect', {
+          x: x0 + j * (bw + gap), y: by, width: bw, height: Math.max(1, H - B - by), rx: 2.5,
+          'class': (j === 0 ? 'bar-train' : 'bar-valid') + ' grow'
+        }, s);
+      });
+      txt(s, cx, H - 40, lb, { anchor: 'middle', size: 10 });
+      var hit = add('rect', { x: L + gw * i, y: T, width: gw, height: ph, 'class': 'hit' }, s);
+      bindTip(hit,
+        '<div class="t-head">duration ' + lb + ' 秒</div>' +
+        '<div class="t-row"><span>实际（训练）</span><b>' + (d.actual[i] * 100).toFixed(2) + '%</b></div>' +
+        '<div class="t-row"><span>预测均值（测试）</span><b>' + (d.pred[i] * 100).toFixed(2) + '%</b></div>');
+    });
+
+    txt(s, (L + W - R) / 2, H - 12, '通话时长（秒）', { anchor: 'middle', size: 10.5 });
+
+    root.appendChild(s);
+    armChart(root);
+  })();
+
+  /* =======================================================================
+     8) donut
+     ======================================================================= */
+  (function () {
+    var svg = $('#donut');
+    if (!svg) return;
+    var share = DATA.overview.pos_rate;
+    var cx = 88, cy = 88, r = 62, sw = 22;
+    var C = 2 * Math.PI * r;
+    add('circle', { cx: cx, cy: cy, r: r, fill: 'none', stroke: '#e7eef8', 'stroke-width': sw }, svg);
+    var arc = add('circle', {
+      cx: cx, cy: cy, r: r, fill: 'none', stroke: '#2e5a9c', 'stroke-width': sw,
+      'stroke-linecap': 'butt', transform: 'rotate(-90 ' + cx + ' ' + cy + ')',
+      'stroke-dasharray': '0 ' + C
+    }, svg);
+    arc.style.transition = 'stroke-dasharray .95s cubic-bezier(.22,.8,.3,1)';
+    txt(svg, cx, cy - 2, (share * 100).toFixed(2) + '%', { anchor: 'middle', cls: 'big' });
+    txt(svg, cx, cy + 16, '正例率', { anchor: 'middle', cls: 'small' });
+    onVisibleOnce(svg, function () {
+      arc.setAttribute('stroke-dasharray', (C * share).toFixed(2) + ' ' + C.toFixed(2));
+    });
+  })();
+
+  /* =======================================================================
+     9) mini bars in feature cards
+     ======================================================================= */
+  (function () {
+    function fill(host, values, scale) {
+      if (!host) return;
+      var max = Math.max.apply(null, values);
+      values.forEach(function (v, i) {
+        var b = document.createElement('i');
+        var h = clamp((v / max) * 100 * (scale == null ? 1 : scale), 2, 100);
+        b.style.height = h.toFixed(1) + '%';
+        b.title = fmt(v);
+        host.appendChild(b);
+      });
+    }
+    fill($('[data-mini="dur-raw"]'), DATA.duration_hist_raw.counts.slice(3));
+    fill($('[data-mini="dur-log"]'), DATA.duration_hist_log.counts);
+    fill($('[data-mini="campaign"]'), DATA.campaign_hist.counts, 0.85);
+  })();
+
+  /* =======================================================================
+     10) categorical explorer
+     ======================================================================= */
+  (function () {
+    var tabs = $('#cat-tabs'), list = $('#cat-list'), insight = $('#cat-insight'), scaleMax = $('#cat-scale-max');
+    if (!tabs || !list) return;
+
+    var META = {
+      job: { label: '职业' },
+      marital: { label: '婚姻' },
+      education: { label: '教育' },
+      default: { label: '违约' },
+      housing: { label: '房贷' },
+      loan: { label: '个人贷款' },
+      contact: { label: '联系方式' },
+      month: { label: '月份' },
+      poutcome: { label: '上次结果' }
+    };
+    var INSIGHT = {
+      job: '<b>学生 34.08%、退休 24.62%、失业 17.98%</b> 明显高于整体 12.07%；蓝领只有 <b>6.74%</b>，相差约 5 倍。样本最多的管理岗 175,541 人，认购率 15.04%。',
+      marital: '<b>单身 17.05%</b> 高于已婚 10.19% 和离异 11.16%，约有 7 个百分点的差距。',
+      education: '<b>高等教育 16.27%</b> > 中等 10.55% > 初等 8.31%，学历与认购意愿正相关。',
+      default: '有违约记录的用户认购率只有 <b>4.63%</b>，但样本仅 12,849 行，这一段统计噪声不小。',
+      housing: '<b>无房贷 17.58%</b>，有房贷 7.53%——房贷压力与认购意愿明显负相关。',
+      loan: '<b>无个人贷款 13.14%</b>，有贷款 5.47%。',
+      contact: '<b>手机联系 15.66%</b>，未知联系方式只有 4.30%，电话联系 13.68%。',
+      month: '<b>3、9、10、12 月认购率 49%–57%</b>，但样本量只有几千；<b>5 月样本最多（228,411 行）认购率仅 7.14%</b>。月份与营销活动的节奏高度相关。',
+      poutcome: '上次营销<b>成功 76.40%</b>（17,691 行），失败 13.28%，未知 10.19%。这是最强的类别信号。'
+    };
+
+    var current = 'job';
+    var overall = DATA.overview.pos_rate;
+
+    function setTab(key) {
+      current = key;
+      $$('.cat-tab', tabs).forEach(function (b) {
+        b.classList.toggle('on', b.getAttribute('data-cat') === key);
+        b.setAttribute('aria-selected', b.getAttribute('data-cat') === key ? 'true' : 'false');
+      });
+      render(key);
+    }
+
+    function render(key) {
+      var d = DATA.categorical[key];
+      if (!d) return;
+      var order = d.labels.map(function (_, i) { return i; });
+      if (key !== 'month') {
+        order.sort(function (a, b) { return d.rates[b] - d.rates[a]; });
+      }
+      var maxRate = Math.max.apply(null, d.rates);
+      var scale = Math.max(maxRate * 1.1, overall * 1.6);
+      scaleMax.textContent = (scale * 100).toFixed(0) + '%';
+
+      list.innerHTML = '';
+      order.forEach(function (i, pos) {
+        var rate = d.rates[i];
+        var row = document.createElement('div');
+        row.className = 'cat-row';
+        row.innerHTML =
+          '<div class="cat-name">' + esc(d.labels[i]) +
+            '<span class="cat-count">' + fmt(d.counts[i]) + '</span></div>' +
+          '<div class="cat-track">' +
+            '<div class="cat-fill" style="width:0%"></div>' +
+            '<div class="cat-base" style="left:' + (overall / scale * 100).toFixed(2) + '%"></div>' +
+          '</div>' +
+          '<div class="cat-val">' + (rate * 100).toFixed(2) + '%</div>';
+        list.appendChild(row);
+        var fillEl = row.querySelector('.cat-fill');
+        var target = (rate / scale * 100).toFixed(2) + '%';
+        if (SNAP) {
+          fillEl.style.width = target;
+        } else {
+          setTimeout(function () {
+            fillEl.style.width = target;
+            fillEl.style.transitionDelay = Math.min(pos * 22, 260) + 'ms';
+          }, 20);
+        }
+        row.addEventListener('mouseenter', function () {
+          tip.innerHTML = '<div class="t-head">' + esc(d.labels[i]) + '</div>' +
+            '<div class="t-row"><span>样本量</span><b>' + fmt(d.counts[i]) + '</b></div>' +
+            '<div class="t-row"><span>认购率</span><b>' + (rate * 100).toFixed(2) + '%</b></div>' +
+            '<div class="t-row"><span>整体</span><b>' + (overall * 100).toFixed(2) + '%</b></div>';
+          tip.classList.add('on');
+        });
+        row.addEventListener('mousemove', function (e) { moveTip(e); });
+        row.addEventListener('mouseleave', function () { tip.classList.remove('on'); });
+      });
+
+      insight.innerHTML = INSIGHT[key] || '';
+    }
+
+    Object.keys(META).forEach(function (key) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cat-tab';
+      b.setAttribute('data-cat', key);
+      b.setAttribute('role', 'tab');
+      b.textContent = META[key].label;
+      b.addEventListener('click', function () { setTab(key); });
+      tabs.appendChild(b);
+    });
+
+    setTab(current);
+  })();
+
+  /* =======================================================================
+     11) threshold simulator
+     ======================================================================= */
+  (function () {
+    var range = $('#thr-range');
+    if (!range) return;
+    var curve = DATA.threshold_curve;
+    var edges = curve.edges, counts = curve.counts, sums = curve.sums;
+    var totalN = DATA.submission.rows;
+    var totalSum = DATA.expected_positives;
+    var overall = DATA.submission.mean;
+
+    var out = {
+      n: $('#thr-n'), rate: $('#thr-rate'), lift: $('#thr-lift'), recall: $('#thr-recall'),
+      value: $('#thr-value')
+    };
+
+    function compute(t) {
+      var sel = 0, pos = 0;
+      for (var i = 0; i < counts.length; i++) {
+        var lo = edges[i], hiE = edges[i + 1];
+        var frac = hiE <= t ? 0 : (lo >= t ? 1 : (hiE - t) / (hiE - lo));
+        sel += counts[i] * frac;
+        pos += sums[i] * frac;
+      }
+      return {
+        n: Math.round(sel),
+        rate: sel > 0 ? pos / sel : 0,
+        pos: pos
+      };
+    }
+
+    function render() {
+      var t = parseFloat(range.value);
+      var r = compute(t);
+      out.value.textContent = t.toFixed(2);
+      out.n.textContent = fmt(r.n);
+      out.rate.textContent = pct(r.rate, 1);
+      out.lift.textContent = (r.rate / overall).toFixed(2) + '×';
+      out.recall.textContent = pct(r.pos / totalSum, 1);
+      range.setAttribute('aria-valuetext', '阈值 ' + t.toFixed(2) + '，名单 ' + fmt(r.n) + ' 人');
+    }
+
+    range.addEventListener('input', render);
+    render();
+  })();
+
+  /* =======================================================================
+     12) horizontal-scroll hints (tables & charts on small screens)
+     ======================================================================= */
+  (function () {
+    function debounce(fn, wait) {
+      var t;
+      return function () {
+        clearTimeout(t);
+        t = setTimeout(fn, wait);
+      };
+    }
+    function update() {
+      $$('.table-wrap, .chart-wrap').forEach(function (w) {
+        var over = w.scrollWidth > w.clientWidth + 8;
+        var next = w.nextElementSibling;
+        var has = next && next.classList && next.classList.contains('scroll-hint');
+        if (over && !has) {
+          var h = document.createElement('div');
+          h.className = 'scroll-hint';
+          h.textContent = '左右滑动查看完整' + (w.classList.contains('chart-wrap') ? '图表' : '表格') + ' →';
+          w.parentNode.insertBefore(h, w.nextSibling);
+        } else if (!over && has) {
+          next.remove();
+        }
+      });
+    }
+    if (document.readyState === 'complete') update();
+    else window.addEventListener('load', update);
+    window.addEventListener('resize', debounce(update, 180));
+    $$('details').forEach(function (d) { d.addEventListener('toggle', update); });
+  })();
+
+  /* =======================================================================
+     13) kick off visibility checks
+     ======================================================================= */
+  (function () {
+    var ticking = false;
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(function () { ticking = false; checkVisible(); });
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    window.addEventListener('load', onScroll);
+    checkVisible();
+    setTimeout(checkVisible, 120);
+  })();
+
+  /* =======================================================================
+     14) navigation state + progress
+     ======================================================================= */
+  (function () {
+    var links = $$('.nav-link');
+    var sections = links.map(function (a) {
+      return document.getElementById(a.getAttribute('href').slice(1));
+    }).filter(Boolean);
+    var progress = $('#progress');
+    var ticking = false;
+
+    function update() {
+      var navH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--nav-h'), 10) || 64;
+      var y = window.scrollY || window.pageYOffset;
+      var current = '';
+      sections.forEach(function (s) {
+        if (s.getBoundingClientRect().top <= navH + 80) current = s.id;
+      });
+      links.forEach(function (a) {
+        a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+        if (a.getAttribute('href') === '#' + current) a.setAttribute('aria-current', 'true');
+        else a.removeAttribute('aria-current');
+      });
+      var docH = document.documentElement.scrollHeight - window.innerHeight;
+      if (progress) progress.style.width = (docH > 0 ? clamp(y / docH, 0, 1) * 100 : 0) + '%';
+      ticking = false;
+    }
+    window.addEventListener('scroll', function () {
+      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  })();
+
+  /* =======================================================================
+     15) code highlighting + copy
+     ======================================================================= */
+  (function () {
+    var KW = new Set(('False None True and as assert async await break class continue def del elif else except ' +
+      'finally for from global if import in is lambda nonlocal not or pass raise return try while with yield').split(' '));
+    var BUILTIN = new Set(('np pd plt time json len range zip enumerate print int float str dict list set ' +
+      'sorted min max sum abs round usort pd').split(' '));
+
+    function highlight(src) {
+      var re = /(#[^\n]*)|("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|\b(\d[\d_]*(?:\.\d+)?(?:e-?\d+)?)\b|\b([A-Za-z_]\w*)\b/g;
+      var out = '', last = 0, m;
+      while ((m = re.exec(src))) {
+        out += esc(src.slice(last, m.index));
+        if (m[1] != null) out += '<span class="tok-c">' + esc(m[1]) + '</span>';
+        else if (m[2] != null) out += '<span class="tok-s">' + esc(m[2]) + '</span>';
+        else if (m[3] != null) out += '<span class="tok-n">' + esc(m[3]) + '</span>';
+        else {
+          var id = m[4], after = src[re.lastIndex];
+          if (KW.has(id)) out += '<span class="tok-k">' + id + '</span>';
+          else if (BUILTIN.has(id)) out += '<span class="tok-b">' + id + '</span>';
+          else if (after === '(') out += '<span class="tok-f">' + id + '</span>';
+          else out += esc(id);
+        }
+        last = re.lastIndex;
+      }
+      out += esc(src.slice(last));
+      return out;
+    }
+
+    $$('.code').forEach(function (box) {
+      var src = box.querySelector('.code-src');
+      if (!src) return;
+      var raw = src.textContent.replace(/^\n+/, '').replace(/\s+$/, '');
+      var pre = document.createElement('pre');
+      var code = document.createElement('code');
+      code.innerHTML = highlight(raw);
+      pre.appendChild(code);
+      box.appendChild(pre);
+      src.remove();
+
+      var btn = box.querySelector('.code-copy');
+      if (btn) {
+        btn.addEventListener('click', function () {
+          var done = function () {
+            var old = btn.textContent;
+            btn.textContent = '已复制';
+            setTimeout(function () { btn.textContent = old; }, 1500);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(raw).then(done, function () { btn.textContent = '复制失败'; });
+          } else {
+            var ta = document.createElement('textarea');
+            ta.value = raw; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); done(); } catch (e) { btn.textContent = '复制失败'; }
+            document.body.removeChild(ta);
+          }
+        });
+      }
+    });
+  })();
+
+  /* ---------- visual chrome: section numbers + back to top ---------- */
+  (function () {
+    $$('.sec-head').forEach(function (h) {
+      var k = h.querySelector('.sec-kicker');
+      var m = k && k.textContent.match(/\d+/);
+      if (m) h.setAttribute('data-num', m[0]);
+    });
+
+    var top = document.getElementById('to-top');
+    if (!top) return;
+    var shown = false;
+    function update() {
+      var y = window.scrollY || window.pageYOffset || 0;
+      var next = y > 600;
+      if (next !== shown) {
+        shown = next;
+        top.classList.toggle('show', next);
+      }
+    }
+    top.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+    });
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  })();
+
+})();
+
+</script>
+</body>
+</html>
